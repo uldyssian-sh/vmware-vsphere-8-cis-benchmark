@@ -79,45 +79,46 @@ vmware-vsphere-8-cis-benchmark/
 └── README.md                        # This file
 ```
 
-## 📊 Sample Output
+## Sample Output
 
 ```
 ================================================================================
-VMware vSphere 8 CIS Benchmark Audit Tool
+VMware vSphere 8 CIS Benchmark Audit Tool - COMPLETE COVERAGE
 ================================================================================
-Enterprise Security Compliance Assessment
+Enterprise Security Compliance Assessment - All 106 CIS Controls
 Read-Only Mode - No Configuration Changes
 
 [INIT] PowerCLI ready
 [CONN] Successfully connected to vcenter.domain.com
-[START] Beginning CIS Benchmark audit...
+[START] Beginning COMPLETE CIS Benchmark audit...
 
 [████████████████████░] 85% - Completed: CIS-7.2.1 - Ensure port groups are not configured to VLAN 0 or 4095
-[██████████████████████] 100% - Completed: CIS-8.3.1 - Ensure unnecessary floppy devices are removed
+[██████████████████████] 100% - Completed: CIS-8.9.1 - Ensure VM encryption is enabled where required
 
 ================================================================================
-VMware vSphere 8 CIS Benchmark Audit - FINAL SUMMARY
+VMware vSphere 8 COMPLETE CIS Benchmark Audit - FINAL SUMMARY
 ================================================================================
+COMPLETE COVERAGE: All 106 CIS Benchmark Controls Assessed
 
-🎯 OVERALL COMPLIANCE: 87.4% - GOOD ⚠️
+OVERALL COMPLIANCE: 78.3% - GOOD
 
-📊 CONTROL RESULTS:
-  ✅ PASSED:  83/95
-  ❌ FAILED:  8/95
-  ⚠️  REVIEW:  3/95
-  ℹ️  INFO:    1/95
-  ⚡ ERRORS:  0/95
+COMPLETE CIS CONTROL RESULTS:
+  PASSED:  83/106
+  FAILED:  15/106
+  REVIEW:  7/106
+  INFO:    1/106
+  ERRORS:  0/106
 
-🚨 PRIORITY ACTIONS:
-  🔴 CRITICAL: 8 security controls FAILED
-     ⚡ Immediate remediation required!
-  🟡 REVIEW: 3 controls need manual review
+PRIORITY ACTIONS:
+  CRITICAL: 15 security controls FAILED
+     Immediate remediation required!
+  REVIEW: 7 controls need manual review
 
-📄 REPORTS GENERATED:
-  📊 HTML Report: ./reports/vSphere8-CIS-Audit-20241201-143022.html
-  📈 CSV Data:    ./reports/vSphere8-CIS-Audit-20241201-143022.csv
+COMPLETE REPORTS GENERATED:
+  HTML Report: ./reports/vSphere8-CIS-Complete-Audit-20241201-143022.html
+  CSV Data:    ./reports/vSphere8-CIS-Complete-Audit-20241201-143022.csv
 
-🔧 TOP RECOMMENDATIONS:
+TOP RECOMMENDATIONS:
   • CIS-2.3.1: Disable Managed Object Browser
   • CIS-4.2.1: Disable ESXi Shell service
   • CIS-5.2.1: Enable lockdown mode
@@ -125,7 +126,8 @@ VMware vSphere 8 CIS Benchmark Audit - FINAL SUMMARY
   • CIS-8.2.1: Set RemoteDisplay.maxConnections to 1
 
 ================================================================================
-Audit completed in 4.2 minutes
+Complete CIS Benchmark audit completed in 18.7 minutes
+All 106 CIS Benchmark controls assessed
 ================================================================================
 ```
 
