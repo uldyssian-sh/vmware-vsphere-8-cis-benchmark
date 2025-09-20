@@ -45,9 +45,9 @@ cd vmware-vsphere-8-cis-benchmark
 
 | Environment Size | Hosts | VMs | Duration | Description |
 |------------------|-------|-----|----------|-------------|
-| **Small Lab** | 1-3 | 5-20 | 2-4 minutes | Home lab or small test environment |
-| **Medium Enterprise** | 4-10 | 50-200 | 8-15 minutes | Typical enterprise branch office |
-| **Large Enterprise** | 10+ | 200+ | 20-35 minutes | Large datacenter or multi-cluster environment |
+| **Small Lab** | 1-3 | 5-20 | 5-8 minutes | Home lab or small test environment |
+| **Medium Enterprise** | 4-10 | 50-200 | 15-25 minutes | Typical enterprise branch office |
+| **Large Enterprise** | 10+ | 200+ | 35-60 minutes | Large datacenter or multi-cluster environment |
 
 ## 📋 CIS Security Sections
 
@@ -197,7 +197,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🏷️ Version
 
-Current version: 2.0.0
+Current version: 3.0.0 - Complete CIS Coverage
 
 ## 📞 Support
 
