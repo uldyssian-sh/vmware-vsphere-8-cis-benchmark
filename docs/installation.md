@@ -3,169 +3,213 @@
 ## Prerequisites
 
 ### System Requirements
-- **Operating System**: Windows 10/11, Windows Server 2016+, Linux, or macOS
-- **PowerShell**: Version 5.1 or later (PowerShell 7+ recommended)
-- **Memory**: Minimum 4GB RAM
-- **Network**: Access to vCenter Server and ESXi hosts
+- **Operating System:** Windows 10/11, Windows Server 2016+, or PowerShell Core on Linux/macOS
+- **PowerShell:** Version 5.1 or PowerShell Core 7.0+
+- **VMware PowerCLI:** Version 13.0 or later
+- **Network Access:** Connectivity to vCenter Server (TCP 443)
+- **Permissions:** Read-only access to vSphere environment
 
-### VMware Requirements
-- **vSphere Version**: VMware vSphere 8.0 or later
-- **vCenter Server**: Accessible via HTTPS
-- **Permissions**: Read-only access to vSphere inventory
-- **Network**: Connectivity to vCenter Server (port 443)
+### Required Modules
+- VMware.PowerCLI
+- VMware.VimAutomation.Core
+- VMware.VimAutomation.Vds (for distributed switch checks)
 
 ## Installation Steps
 
-### 1. Install PowerShell (if needed)
+### 1. Clone the Repository
 
-**Windows:**
-PowerShell 5.1 is included with Windows 10/11. For PowerShell 7+:
-```powershell
-winget install Microsoft.PowerShell
-```
-
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt update
-sudo apt install -y wget apt-transport-https software-properties-common
-wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
-sudo dpkg -i packages-microsoft-prod.deb
-sudo apt update
-sudo apt install -y powershell
-```
-
-**macOS:**
-```bash
-brew install powershell
-```
-
-### 2. Install VMware PowerCLI
-
-Open PowerShell as Administrator and run:
-
-```powershell
-# Install PowerCLI from PowerShell Gallery
-Install-Module -Name VMware.PowerCLI -Scope AllUsers -Force
-
-# Verify installation
-Get-Module -ListAvailable VMware.PowerCLI
-```
-
-### 3. Configure PowerCLI
-
-```powershell
-# Set execution policy (if needed)
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-
-# Configure PowerCLI settings
-Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
-Set-PowerCLIConfiguration -ParticipateInCEIP $false -Confirm:$false
-```
-
-### 4. Download the Audit Script
-
-**Option A: Git Clone**
 ```bash
 git clone https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark.git
 cd vmware-vsphere-8-cis-benchmark
 ```
 
-**Option B: Download ZIP**
-1. Go to the [GitHub repository](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark)
-2. Click "Code" → "Download ZIP"
-3. Extract to desired location
+### 2. Install VMware PowerCLI
 
-### 5. Verify Installation
+```powershell
+# Install PowerCLI for current user
+Install-Module -Name VMware.PowerCLI -Force -AllowClobber -Scope CurrentUser
+
+# Verify installation
+Get-Module -ListAvailable VMware.PowerCLI
+```
+
+### 3. Configure PowerShell Execution Policy
+
+```powershell
+# Set execution policy for current user
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Verify execution policy
+Get-ExecutionPolicy -List
+```
+
+### 4. Configure PowerCLI Settings (Optional)
+
+```powershell
+# Disable certificate warnings for lab environments
+Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
+
+# Enable multiple default VIServer connections
+Set-PowerCLIConfiguration -DefaultVIServerMode Multiple -Confirm:$false
+```
+
+## Quick Start
+
+### Basic Usage (Minimal Input)
 
 ```powershell
 # Navigate to script directory
-cd vmware-vsphere-8-cis-benchmark/scripts
+cd scripts
 
-# Test script syntax
-Get-Content .\Invoke-vSphere8CISAudit.ps1 | Out-Null
-
-# Check PowerCLI modules
-Get-Module -ListAvailable VMware.*
+# Run audit with prompts
+.\Invoke-vSphere8CISAudit.ps1
 ```
 
-## Configuration
+The script will prompt for:
+- vCenter Server FQDN or IP address
+- vCenter credentials
 
-### vSphere Permissions
+### Advanced Usage (No Prompts)
 
-The audit script requires read-only permissions. Create a dedicated service account with:
+```powershell
+# Run with parameters
+.\Invoke-vSphere8CISAudit.ps1 -vCenterServer "vcenter.domain.com" -OutputPath "C:\Reports"
 
-**vCenter Server Permissions:**
-- Global → Read-only
-- Datastore → Browse datastore
-- Network → Assign network
-- Virtual machine → Configuration → All read-only permissions
+# Run with pre-configured credentials
+$cred = Get-Credential
+.\Invoke-vSphere8CISAudit.ps1 -vCenterServer "vcenter.domain.com" -Credential $cred -OutputPath "\\server\share\reports"
+```
 
-**ESXi Host Permissions:**
-- Host → Configuration → All read-only permissions
-- Host → Local operations → All read-only permissions
+## Verification
 
-### Network Configuration
+### Test PowerCLI Connection
 
-Ensure the following network connectivity:
-- **vCenter Server**: Port 443 (HTTPS)
-- **ESXi Hosts**: Port 443 (HTTPS) - if direct host access needed
-- **DNS Resolution**: Proper FQDN resolution for all components
+```powershell
+# Test connection to vCenter
+Connect-VIServer -Server "vcenter.domain.com"
+
+# Verify access
+Get-VMHost | Select-Object Name, Version, Build
+Get-VM | Select-Object Name, PowerState -First 5
+
+# Disconnect
+Disconnect-VIServer -Confirm:$false
+```
+
+### Validate Script Syntax
+
+```powershell
+# Check PowerShell syntax
+$null = [System.Management.Automation.PSParser]::Tokenize((Get-Content "scripts/Invoke-vSphere8CISAudit.ps1" -Raw), [ref]$null)
+Write-Host "✅ PowerShell syntax validation passed" -ForegroundColor Green
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-**PowerCLI Module Not Found:**
+#### PowerCLI Module Not Found
 ```powershell
-# Reinstall PowerCLI
-Uninstall-Module VMware.PowerCLI -Force
-Install-Module VMware.PowerCLI -Force
+# Error: The term 'Connect-VIServer' is not recognized
+Install-Module -Name VMware.PowerCLI -Force -AllowClobber -Scope CurrentUser
+Import-Module VMware.PowerCLI
 ```
 
-**Certificate Errors:**
+#### Execution Policy Restriction
 ```powershell
-# Ignore certificate warnings (lab environments only)
-Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
-```
-
-**Execution Policy Errors:**
-```powershell
-# Set appropriate execution policy
+# Error: Execution of scripts is disabled on this system
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-**Connection Timeouts:**
+#### Certificate Errors
 ```powershell
-# Increase timeout values
-Set-PowerCLIConfiguration -WebOperationTimeoutSeconds 300 -Confirm:$false
+# Error: The underlying connection was closed: Could not establish trust relationship
+Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
 ```
 
-### Verification Commands
-
+#### Permission Denied
 ```powershell
-# Check PowerShell version
-$PSVersionTable.PSVersion
+# Error: Access denied or insufficient permissions
+# Ensure the account has at least read-only access to:
+# - vCenter Server
+# - ESXi hosts
+# - Virtual machines
+# - Datastores
+# - Network configuration
+```
 
-# Check PowerCLI version
-Get-PowerCLIVersion
-
-# Test vCenter connectivity
+#### Connection Timeout
+```powershell
+# Error: Connection timeout
+# Check network connectivity:
 Test-NetConnection -ComputerName "vcenter.domain.com" -Port 443
 
-# Verify script permissions
-Get-ExecutionPolicy -List
+# Verify DNS resolution:
+Resolve-DnsName "vcenter.domain.com"
 ```
+
+### Performance Optimization
+
+#### Large Environments
+For environments with 100+ VMs or 10+ hosts:
+
+```powershell
+# Increase PowerCLI timeout
+Set-PowerCLIConfiguration -WebOperationTimeoutSeconds 300 -Confirm:$false
+
+# Use specific output path on fast storage
+.\Invoke-vSphere8CISAudit.ps1 -OutputPath "D:\FastStorage\Reports"
+```
+
+#### Network Optimization
+```powershell
+# For slow network connections, increase timeout
+$VIServerTimeout = 300  # 5 minutes
+Connect-VIServer -Server "vcenter.domain.com" -Protocol https -Port 443
+```
+
+## Environment Variables
+
+### Optional Configuration
+```powershell
+# Set default vCenter server
+$env:VCENTER_SERVER = "vcenter.domain.com"
+
+# Set default output path
+$env:CIS_REPORT_PATH = "C:\CISReports"
+
+# Set PowerCLI configuration path
+$env:POWERCLI_CONFIG_PATH = "C:\PowerCLI"
+```
+
+## Security Considerations
+
+### Credential Management
+- Use service accounts with minimal required permissions
+- Store credentials securely using Windows Credential Manager
+- Avoid hardcoding credentials in scripts
+
+### Network Security
+- Ensure encrypted connections (HTTPS/TLS)
+- Use VPN or secure network segments
+- Implement network access controls
+
+### Audit Logging
+- Enable PowerShell transcription for audit trails
+- Monitor script execution and results
+- Secure report storage locations
 
 ## Next Steps
 
-After installation:
-1. Review [Configuration Guide](configuration.md)
-2. Read [User Manual](user-manual.md)
-3. Run your first audit: `.\Invoke-vSphere8CISAudit.ps1`
+After successful installation:
 
-## Support
+1. **Review the generated reports** in the `reports/` directory
+2. **Analyze failed controls** and plan remediation
+3. **Schedule regular audits** using Windows Task Scheduler
+4. **Integrate with SIEM/GRC tools** using CSV exports
+5. **Customize controls** based on organizational requirements
 
-For installation issues:
-- Check [FAQ](faq.md)
-- Review [Troubleshooting Guide](troubleshooting.md)
-- Create an [Issue](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/issues)
+For additional help, see:
+- [Security Policy](../SECURITY.md)
+- [Contributing Guidelines](../CONTRIBUTING.md)
+- [GitHub Issues](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/issues)
