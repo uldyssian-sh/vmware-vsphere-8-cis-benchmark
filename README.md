@@ -41,6 +41,14 @@ cd vmware-vsphere-8-cis-benchmark
 .\scripts\Invoke-vSphere8CISAudit.ps1 -vCenterServer "vcenter.domain.com" -OutputPath "C:\Reports"
 ```
 
+### Performance Benchmarks
+
+| Environment Size | Hosts | VMs | Duration | Description |
+|------------------|-------|-----|----------|-------------|
+| **Small Lab** | 1-3 | 5-20 | 2-4 minutes | Home lab or small test environment |
+| **Medium Enterprise** | 4-10 | 50-200 | 8-15 minutes | Typical enterprise branch office |
+| **Large Enterprise** | 10+ | 200+ | 20-35 minutes | Large datacenter or multi-cluster environment |
+
 ## 📋 CIS Security Sections
 
 The script implements comprehensive coverage across all CIS Benchmark security domains:
