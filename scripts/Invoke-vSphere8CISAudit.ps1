@@ -247,19 +247,128 @@ function Test-Section1-Controls {
         Add-CISResult -ControlID "CIS-1.3.1" -Section $section -Title "Ensure default salt is configured properly" -Status "ERROR" -Details $_.Exception.Message
     }
     
-    # Additional controls 1.3.2 through 1.5.3 (simplified for space)
-    $additionalControls = @(
-        @{ID="CIS-1.3.2"; Title="Ensure image profile VIB acceptance levels are verified"},
-        @{ID="CIS-1.4.1"; Title="Ensure BIOS/UEFI settings are configured securely"},
-        @{ID="CIS-1.4.2"; Title="Ensure secure boot is enabled"},
-        @{ID="CIS-1.4.3"; Title="Ensure no unauthorized devices are connected"},
-        @{ID="CIS-1.5.1"; Title="Ensure proper time synchronization"},
-        @{ID="CIS-1.5.2"; Title="Ensure host profiles are used for configuration management"},
-        @{ID="CIS-1.5.3"; Title="Ensure vSphere Update Manager is configured"}
-    )
+    # CIS-1.3.2: Ensure image profile VIB acceptance levels are verified
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            try {
+                $esxcli = Get-EsxCli -VMHost $host -V2
+                $imageProfile = $esxcli.software.profile.get.Invoke()
+                if ($imageProfile.AcceptanceLevel -notin @('VMwareCertified', 'VMwareAccepted', 'PartnerSupported')) {
+                    $nonCompliantHosts += "$($host.Name):$($imageProfile.AcceptanceLevel)"
+                }
+            } catch {
+                $nonCompliantHosts += "$($host.Name):Check failed"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-1.3.2" -Section $section -Title "Ensure image profile VIB acceptance levels are verified" -Status "PASS" -Details "All image profiles have proper acceptance levels"
+        } else {
+            Add-CISResult -ControlID "CIS-1.3.2" -Section $section -Title "Ensure image profile VIB acceptance levels are verified" -Status "FAIL" -Details "Non-compliant hosts: $($nonCompliantHosts -join ', ')" -Recommendation "Verify image profile acceptance levels"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-1.3.2" -Section $section -Title "Ensure image profile VIB acceptance levels are verified" -Status "ERROR" -Details $_.Exception.Message
+    }
     
-    foreach ($control in $additionalControls) {
-        Add-CISResult -ControlID $control.ID -Section $section -Title $control.Title -Status "REVIEW" -Details "Manual verification required" -Recommendation "Verify configuration manually"
+    # CIS-1.4.1: Ensure BIOS/UEFI settings are configured securely
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsToReview = @()
+        foreach ($host in $esxiHosts) {
+            $bootType = $host.ExtensionData.Hardware.SystemInfo.Firmware
+            $hostsToReview += "$($host.Name):$bootType"
+        }
+        Add-CISResult -ControlID "CIS-1.4.1" -Section $section -Title "Ensure BIOS/UEFI settings are configured securely" -Status "REVIEW" -Details "Boot types: $($hostsToReview -join ', ')" -Recommendation "Manually verify BIOS/UEFI security settings"
+    } catch {
+        Add-CISResult -ControlID "CIS-1.4.1" -Section $section -Title "Ensure BIOS/UEFI settings are configured securely" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-1.4.2: Ensure secure boot is enabled
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            try {
+                $secureBootEnabled = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Boot.SecureBoot" -ErrorAction SilentlyContinue
+                if (-not $secureBootEnabled -or $secureBootEnabled.Value -ne $true) {
+                    $nonCompliantHosts += $host.Name
+                }
+            } catch {
+                $nonCompliantHosts += $host.Name
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-1.4.2" -Section $section -Title "Ensure secure boot is enabled" -Status "PASS" -Details "Secure boot enabled on all hosts"
+        } else {
+            Add-CISResult -ControlID "CIS-1.4.2" -Section $section -Title "Ensure secure boot is enabled" -Status "REVIEW" -Details "Check secure boot on: $($nonCompliantHosts -join ', ')" -Recommendation "Enable secure boot in BIOS/UEFI"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-1.4.2" -Section $section -Title "Ensure secure boot is enabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-1.4.3: Ensure no unauthorized devices are connected
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithDevices = @()
+        foreach ($host in $esxiHosts) {
+            $pciDevices = $host.ExtensionData.Hardware.PciDevice | Where-Object { $_.DeviceName -notmatch "VMware|Intel|Broadcom" }
+            if ($pciDevices) {
+                $hostsWithDevices += "$($host.Name):$($pciDevices.Count) unknown devices"
+            }
+        }
+        if ($hostsWithDevices.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-1.4.3" -Section $section -Title "Ensure no unauthorized devices are connected" -Status "PASS" -Details "No unauthorized devices found"
+        } else {
+            Add-CISResult -ControlID "CIS-1.4.3" -Section $section -Title "Ensure no unauthorized devices are connected" -Status "REVIEW" -Details "Hosts with unknown devices: $($hostsWithDevices -join ', ')" -Recommendation "Review and authorize all connected devices"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-1.4.3" -Section $section -Title "Ensure no unauthorized devices are connected" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-1.5.1: Ensure proper time synchronization
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $ntpService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "ntpd" }
+            $ntpServers = Get-VMHostNtpServer -VMHost $host
+            if (-not $ntpService.Running -or $ntpServers.Count -lt 2) {
+                $nonCompliantHosts += "$($host.Name):NTP servers: $($ntpServers.Count)"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-1.5.1" -Section $section -Title "Ensure proper time synchronization" -Status "PASS" -Details "Time synchronization properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-1.5.1" -Section $section -Title "Ensure proper time synchronization" -Status "FAIL" -Details "Time sync issues: $($nonCompliantHosts -join ', ')" -Recommendation "Configure multiple NTP servers"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-1.5.1" -Section $section -Title "Ensure proper time synchronization" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-1.5.2: Ensure host profiles are used for configuration management
+    try {
+        $hostProfiles = Get-VMHostProfile -ErrorAction SilentlyContinue
+        $hostsWithoutProfiles = Get-VMHost | Where-Object { -not $_.ExtensionData.Config.Profile }
+        if ($hostsWithoutProfiles.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-1.5.2" -Section $section -Title "Ensure host profiles are used for configuration management" -Status "PASS" -Details "All hosts use host profiles"
+        } else {
+            Add-CISResult -ControlID "CIS-1.5.2" -Section $section -Title "Ensure host profiles are used for configuration management" -Status "REVIEW" -Details "Hosts without profiles: $($hostsWithoutProfiles.Count)" -Recommendation "Implement host profiles for configuration management"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-1.5.2" -Section $section -Title "Ensure host profiles are used for configuration management" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-1.5.3: Ensure vSphere Update Manager is configured
+    try {
+        $updateManager = Get-View -ViewType UpdateManager -ErrorAction SilentlyContinue
+        if ($updateManager) {
+            Add-CISResult -ControlID "CIS-1.5.3" -Section $section -Title "Ensure vSphere Update Manager is configured" -Status "PASS" -Details "vSphere Update Manager is available"
+        } else {
+            Add-CISResult -ControlID "CIS-1.5.3" -Section $section -Title "Ensure vSphere Update Manager is configured" -Status "REVIEW" -Details "vSphere Update Manager not detected" -Recommendation "Configure vSphere Update Manager for patch management"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-1.5.3" -Section $section -Title "Ensure vSphere Update Manager is configured" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
@@ -328,21 +437,181 @@ function Test-Section2-Controls {
         Add-CISResult -ControlID "CIS-2.3.1" -Section $section -Title "Ensure MOB is disabled" -Status "ERROR" -Details $_.Exception.Message
     }
     
-    # Additional communication controls
-    $additionalControls = @(
-        @{ID="CIS-2.1.2"; Title="Ensure ESXi host time is synchronized with authoritative time source"},
-        @{ID="CIS-2.2.2"; Title="Ensure default firewall rules are configured properly"},
-        @{ID="CIS-2.2.3"; Title="Ensure firewall rules are restrictive"},
-        @{ID="CIS-2.3.2"; Title="Ensure default self-signed certificate is not used"},
-        @{ID="CIS-2.3.3"; Title="Ensure expired or revoked certificates are not used"},
-        @{ID="CIS-2.4.1"; Title="Ensure SNMP is configured properly"},
-        @{ID="CIS-2.4.2"; Title="Ensure dvfilter network APIs are configured properly"},
-        @{ID="CIS-2.5.1"; Title="Ensure vSphere Authentication Proxy is used when adding hosts to Active Directory"},
-        @{ID="CIS-2.6.1"; Title="Ensure VDS health check is disabled"}
-    )
+    # CIS-2.1.2: Ensure ESXi host time is synchronized with authoritative time source
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $ntpServers = Get-VMHostNtpServer -VMHost $host
+            $authoritativeServers = $ntpServers | Where-Object { $_ -match "pool\.ntp\.org|time\.nist\.gov|time\.windows\.com" }
+            if ($authoritativeServers.Count -eq 0) {
+                $nonCompliantHosts += "$($host.Name):$($ntpServers -join ',')"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-2.1.2" -Section $section -Title "Ensure ESXi host time is synchronized with authoritative time source" -Status "PASS" -Details "All hosts use authoritative time sources"
+        } else {
+            Add-CISResult -ControlID "CIS-2.1.2" -Section $section -Title "Ensure ESXi host time is synchronized with authoritative time source" -Status "REVIEW" -Details "Check NTP sources: $($nonCompliantHosts -join ', ')" -Recommendation "Use authoritative NTP servers"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-2.1.2" -Section $section -Title "Ensure ESXi host time is synchronized with authoritative time source" -Status "ERROR" -Details $_.Exception.Message
+    }
     
-    foreach ($control in $additionalControls) {
-        Add-CISResult -ControlID $control.ID -Section $section -Title $control.Title -Status "REVIEW" -Details "Manual verification required" -Recommendation "Verify configuration manually"
+    # CIS-2.2.2: Ensure default firewall rules are configured properly
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $firewallRules = Get-VMHostFirewallException -VMHost $host
+            $enabledRules = $firewallRules | Where-Object { $_.Enabled -eq $true }
+            $unnecessaryRules = $enabledRules | Where-Object { $_.Name -match "CIM|SNMP|SSH|Telnet" -and $_.Enabled -eq $true }
+            if ($unnecessaryRules.Count -gt 0) {
+                $nonCompliantHosts += "$($host.Name):$($unnecessaryRules.Count) unnecessary rules"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-2.2.2" -Section $section -Title "Ensure default firewall rules are configured properly" -Status "PASS" -Details "Firewall rules properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-2.2.2" -Section $section -Title "Ensure default firewall rules are configured properly" -Status "FAIL" -Details "Hosts with unnecessary rules: $($nonCompliantHosts -join ', ')" -Recommendation "Disable unnecessary firewall rules"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-2.2.2" -Section $section -Title "Ensure default firewall rules are configured properly" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-2.2.3: Ensure firewall rules are restrictive
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $firewallRules = Get-VMHostFirewallException -VMHost $host | Where-Object { $_.Enabled -eq $true }
+            $openRules = $firewallRules | Where-Object { $_.AllowedHosts.AllIp -eq $true }
+            if ($openRules.Count -gt 0) {
+                $nonCompliantHosts += "$($host.Name):$($openRules.Count) open rules"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-2.2.3" -Section $section -Title "Ensure firewall rules are restrictive" -Status "PASS" -Details "Firewall rules are restrictive"
+        } else {
+            Add-CISResult -ControlID "CIS-2.2.3" -Section $section -Title "Ensure firewall rules are restrictive" -Status "FAIL" -Details "Hosts with open rules: $($nonCompliantHosts -join ', ')" -Recommendation "Restrict firewall rules to specific IP ranges"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-2.2.3" -Section $section -Title "Ensure firewall rules are restrictive" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-2.3.2: Ensure default self-signed certificate is not used
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithSelfSigned = @()
+        foreach ($host in $esxiHosts) {
+            $cert = Get-VMHostCertificate -VMHost $host
+            if ($cert.Issuer -eq $cert.Subject -or $cert.Issuer -match "VMware|localhost") {
+                $hostsWithSelfSigned += $host.Name
+            }
+        }
+        if ($hostsWithSelfSigned.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-2.3.2" -Section $section -Title "Ensure default self-signed certificate is not used" -Status "PASS" -Details "No self-signed certificates found"
+        } else {
+            Add-CISResult -ControlID "CIS-2.3.2" -Section $section -Title "Ensure default self-signed certificate is not used" -Status "FAIL" -Details "Self-signed certs on: $($hostsWithSelfSigned -join ', ')" -Recommendation "Replace with CA-signed certificates"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-2.3.2" -Section $section -Title "Ensure default self-signed certificate is not used" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-2.3.3: Ensure expired or revoked certificates are not used
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithExpiredCerts = @()
+        foreach ($host in $esxiHosts) {
+            $cert = Get-VMHostCertificate -VMHost $host
+            if ($cert.NotAfter -lt (Get-Date)) {
+                $hostsWithExpiredCerts += "$($host.Name):Expires $($cert.NotAfter)"
+            }
+        }
+        if ($hostsWithExpiredCerts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-2.3.3" -Section $section -Title "Ensure expired or revoked certificates are not used" -Status "PASS" -Details "All certificates are valid"
+        } else {
+            Add-CISResult -ControlID "CIS-2.3.3" -Section $section -Title "Ensure expired or revoked certificates are not used" -Status "FAIL" -Details "Expired certs: $($hostsWithExpiredCerts -join ', ')" -Recommendation "Renew expired certificates"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-2.3.3" -Section $section -Title "Ensure expired or revoked certificates are not used" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-2.4.1: Ensure SNMP is configured properly
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $snmpConfig = Get-VMHostSnmp -VMHost $host
+            if ($snmpConfig.Enabled -eq $true) {
+                if ($snmpConfig.ReadOnlyCommunity -eq "public" -or [string]::IsNullOrEmpty($snmpConfig.ReadOnlyCommunity)) {
+                    $nonCompliantHosts += "$($host.Name):Weak community string"
+                }
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-2.4.1" -Section $section -Title "Ensure SNMP is configured properly" -Status "PASS" -Details "SNMP properly configured or disabled"
+        } else {
+            Add-CISResult -ControlID "CIS-2.4.1" -Section $section -Title "Ensure SNMP is configured properly" -Status "FAIL" -Details "SNMP issues: $($nonCompliantHosts -join ', ')" -Recommendation "Use strong SNMP community strings or disable SNMP"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-2.4.1" -Section $section -Title "Ensure SNMP is configured properly" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-2.4.2: Ensure dvfilter network APIs are configured properly
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $dvFilterConfig = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Net.DVFilterBindIpAddress" -ErrorAction SilentlyContinue
+            if ($dvFilterConfig -and $dvFilterConfig.Value -eq "0.0.0.0") {
+                $nonCompliantHosts += $host.Name
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-2.4.2" -Section $section -Title "Ensure dvfilter network APIs are configured properly" -Status "PASS" -Details "dvfilter APIs properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-2.4.2" -Section $section -Title "Ensure dvfilter network APIs are configured properly" -Status "FAIL" -Details "Open dvfilter on: $($nonCompliantHosts -join ', ')" -Recommendation "Configure specific IP for dvfilter binding"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-2.4.2" -Section $section -Title "Ensure dvfilter network APIs are configured properly" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-2.5.1: Ensure vSphere Authentication Proxy is used when adding hosts to Active Directory
+    try {
+        $esxiHosts = Get-VMHost
+        $adJoinedHosts = @()
+        foreach ($host in $esxiHosts) {
+            $adConfig = Get-VMHostAuthentication -VMHost $host
+            if ($adConfig.Domain -and $adConfig.Domain -ne "") {
+                $adJoinedHosts += "$($host.Name):$($adConfig.Domain)"
+            }
+        }
+        if ($adJoinedHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-2.5.1" -Section $section -Title "Ensure vSphere Authentication Proxy is used when adding hosts to Active Directory" -Status "INFO" -Details "No hosts joined to Active Directory"
+        } else {
+            Add-CISResult -ControlID "CIS-2.5.1" -Section $section -Title "Ensure vSphere Authentication Proxy is used when adding hosts to Active Directory" -Status "REVIEW" -Details "AD-joined hosts: $($adJoinedHosts -join ', ')" -Recommendation "Verify vSphere Authentication Proxy was used"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-2.5.1" -Section $section -Title "Ensure vSphere Authentication Proxy is used when adding hosts to Active Directory" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-2.6.1: Ensure VDS health check is disabled
+    try {
+        $vdSwitches = Get-VDSwitch -ErrorAction SilentlyContinue
+        $nonCompliantSwitches = @()
+        foreach ($vds in $vdSwitches) {
+            $healthCheck = $vds.ExtensionData.Config.HealthCheckConfig
+            if ($healthCheck -and $healthCheck.Enable -eq $true) {
+                $nonCompliantSwitches += $vds.Name
+            }
+        }
+        if ($nonCompliantSwitches.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-2.6.1" -Section $section -Title "Ensure VDS health check is disabled" -Status "PASS" -Details "VDS health check disabled or no VDS found"
+        } else {
+            Add-CISResult -ControlID "CIS-2.6.1" -Section $section -Title "Ensure VDS health check is disabled" -Status "FAIL" -Details "Health check enabled on: $($nonCompliantSwitches -join ', ')" -Recommendation "Disable VDS health check feature"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-2.6.1" -Section $section -Title "Ensure VDS health check is disabled" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
@@ -391,18 +660,107 @@ function Test-Section3-Controls {
         Add-CISResult -ControlID "CIS-3.2.1" -Section $section -Title "Ensure remote logging is configured" -Status "ERROR" -Details $_.Exception.Message
     }
     
-    # Additional logging controls
-    $additionalControls = @(
-        @{ID="CIS-3.1.2"; Title="Ensure centralized ESXi host dumps are configured"},
-        @{ID="CIS-3.2.2"; Title="Ensure syslog rotation is configured"},
-        @{ID="CIS-3.3.1"; Title="Ensure vCenter Server logging is configured"},
-        @{ID="CIS-3.3.2"; Title="Ensure vCenter Server log retention is configured"},
-        @{ID="CIS-3.4.1"; Title="Ensure audit logging is enabled"},
-        @{ID="CIS-3.4.2"; Title="Ensure audit logs are protected from unauthorized access"}
-    )
+    # CIS-3.1.2: Ensure centralized ESXi host dumps are configured
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $dumpConfig = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Misc.CoreDumpPartition" -ErrorAction SilentlyContinue
+            if (-not $dumpConfig -or [string]::IsNullOrWhiteSpace($dumpConfig.Value)) {
+                $nonCompliantHosts += $host.Name
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-3.1.2" -Section $section -Title "Ensure centralized ESXi host dumps are configured" -Status "PASS" -Details "Core dump partitions configured on all hosts"
+        } else {
+            Add-CISResult -ControlID "CIS-3.1.2" -Section $section -Title "Ensure centralized ESXi host dumps are configured" -Status "FAIL" -Details "No dump partition: $($nonCompliantHosts -join ', ')" -Recommendation "Configure core dump partition for centralized dumps"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-3.1.2" -Section $section -Title "Ensure centralized ESXi host dumps are configured" -Status "ERROR" -Details $_.Exception.Message
+    }
     
-    foreach ($control in $additionalControls) {
-        Add-CISResult -ControlID $control.ID -Section $section -Title $control.Title -Status "REVIEW" -Details "Manual verification required" -Recommendation "Verify configuration manually"
+    # CIS-3.2.2: Ensure syslog rotation is configured
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $logRotate = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logDirUnique" -ErrorAction SilentlyContinue
+            $logSize = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logSize" -ErrorAction SilentlyContinue
+            if (-not $logRotate -or $logRotate.Value -ne $true -or -not $logSize -or [int]$logSize.Value -eq 0) {
+                $nonCompliantHosts += "$($host.Name):Rotate=$($logRotate.Value),Size=$($logSize.Value)"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-3.2.2" -Section $section -Title "Ensure syslog rotation is configured" -Status "PASS" -Details "Syslog rotation properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-3.2.2" -Section $section -Title "Ensure syslog rotation is configured" -Status "FAIL" -Details "Rotation issues: $($nonCompliantHosts -join ', ')" -Recommendation "Configure syslog rotation and size limits"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-3.2.2" -Section $section -Title "Ensure syslog rotation is configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-3.3.1: Ensure vCenter Server logging is configured
+    try {
+        $vcenterInfo = $global:DefaultVIServer
+        $logLevel = Get-AdvancedSetting -Entity $vcenterInfo -Name "config.log.level" -ErrorAction SilentlyContinue
+        if ($logLevel -and $logLevel.Value -in @("info", "verbose", "trivia")) {
+            Add-CISResult -ControlID "CIS-3.3.1" -Section $section -Title "Ensure vCenter Server logging is configured" -Status "PASS" -Details "vCenter logging level: $($logLevel.Value)"
+        } else {
+            Add-CISResult -ControlID "CIS-3.3.1" -Section $section -Title "Ensure vCenter Server logging is configured" -Status "REVIEW" -Details "Check vCenter logging configuration" -Recommendation "Configure appropriate vCenter logging level"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-3.3.1" -Section $section -Title "Ensure vCenter Server logging is configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-3.3.2: Ensure vCenter Server log retention is configured
+    try {
+        $vcenterInfo = $global:DefaultVIServer
+        $logRetention = Get-AdvancedSetting -Entity $vcenterInfo -Name "config.log.maxFileNum" -ErrorAction SilentlyContinue
+        if ($logRetention -and [int]$logRetention.Value -ge 10) {
+            Add-CISResult -ControlID "CIS-3.3.2" -Section $section -Title "Ensure vCenter Server log retention is configured" -Status "PASS" -Details "Log retention: $($logRetention.Value) files"
+        } else {
+            Add-CISResult -ControlID "CIS-3.3.2" -Section $section -Title "Ensure vCenter Server log retention is configured" -Status "REVIEW" -Details "Check log retention settings" -Recommendation "Configure adequate log file retention"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-3.3.2" -Section $section -Title "Ensure vCenter Server log retention is configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-3.4.1: Ensure audit logging is enabled
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $auditRecord = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Security.AuditRecord" -ErrorAction SilentlyContinue
+            if (-not $auditRecord -or $auditRecord.Value -ne $true) {
+                $nonCompliantHosts += $host.Name
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-3.4.1" -Section $section -Title "Ensure audit logging is enabled" -Status "PASS" -Details "Audit logging enabled on all hosts"
+        } else {
+            Add-CISResult -ControlID "CIS-3.4.1" -Section $section -Title "Ensure audit logging is enabled" -Status "FAIL" -Details "Audit disabled on: $($nonCompliantHosts -join ', ')" -Recommendation "Enable audit record logging"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-3.4.1" -Section $section -Title "Ensure audit logging is enabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-3.4.2: Ensure audit logs are protected from unauthorized access
+    try {
+        $esxiHosts = Get-VMHost
+        $protectedHosts = 0
+        foreach ($host in $esxiHosts) {
+            $logDir = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logDir" -ErrorAction SilentlyContinue
+            if ($logDir -and $logDir.Value -match "\[.*\]") {
+                $protectedHosts++
+            }
+        }
+        if ($protectedHosts -eq $esxiHosts.Count) {
+            Add-CISResult -ControlID "CIS-3.4.2" -Section $section -Title "Ensure audit logs are protected from unauthorized access" -Status "PASS" -Details "Logs stored on protected datastores"
+        } else {
+            Add-CISResult -ControlID "CIS-3.4.2" -Section $section -Title "Ensure audit logs are protected from unauthorized access" -Status "REVIEW" -Details "Verify log storage security" -Recommendation "Store logs on protected datastores with proper permissions"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-3.4.2" -Section $section -Title "Ensure audit logs are protected from unauthorized access" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
@@ -451,28 +809,303 @@ function Test-Section4-Controls {
         Add-CISResult -ControlID "CIS-4.2.1" -Section $section -Title "Ensure ESXi Shell is disabled" -Status "ERROR" -Details $_.Exception.Message
     }
     
-    # Additional access control controls
-    $additionalControls = @(
-        @{ID="CIS-4.1.2"; Title="Ensure SSH host key checking is enabled"},
-        @{ID="CIS-4.1.3"; Title="Ensure SSH protocol 2 is used"},
-        @{ID="CIS-4.1.4"; Title="Ensure SSH idle timeout is configured"},
-        @{ID="CIS-4.1.5"; Title="Ensure SSH max authentication attempts is set"},
-        @{ID="CIS-4.2.2"; Title="Ensure password complexity is enforced"},
-        @{ID="CIS-4.2.3"; Title="Ensure password reuse is limited"},
-        @{ID="CIS-4.2.4"; Title="Ensure account lockout is configured"},
-        @{ID="CIS-4.3.1"; Title="Ensure Active Directory authentication is used"},
-        @{ID="CIS-4.3.2"; Title="Ensure only authorized users belong to esxAdminsGroup"},
-        @{ID="CIS-4.3.3"; Title="Ensure exception users are configured properly"},
-        @{ID="CIS-4.4.1"; Title="Ensure vCenter Server permissions are configured properly"},
-        @{ID="CIS-4.4.2"; Title="Ensure vCenter Server roles are configured properly"},
-        @{ID="CIS-4.5.1"; Title="Ensure ESXi host local user accounts are configured properly"},
-        @{ID="CIS-4.5.2"; Title="Ensure default ESXi admin account is secured"},
-        @{ID="CIS-4.6.1"; Title="Ensure certificate-based authentication is used"},
-        @{ID="CIS-4.6.2"; Title="Ensure multi-factor authentication is enabled"}
-    )
+    # CIS-4.1.2: Ensure SSH host key checking is enabled
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $sshHostKeyCheck = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.ESXiShellInteractiveTimeOut" -ErrorAction SilentlyContinue
+            # SSH host key checking is typically enabled by default, checking SSH service status
+            $sshService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "TSM-SSH" }
+            if ($sshService.Running -eq $true) {
+                $nonCompliantHosts += "$($host.Name):SSH enabled"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.1.2" -Section $section -Title "Ensure SSH host key checking is enabled" -Status "PASS" -Details "SSH disabled on all hosts"
+        } else {
+            Add-CISResult -ControlID "CIS-4.1.2" -Section $section -Title "Ensure SSH host key checking is enabled" -Status "REVIEW" -Details "SSH enabled on: $($nonCompliantHosts -join ', ')" -Recommendation "Verify SSH host key checking is enabled"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.1.2" -Section $section -Title "Ensure SSH host key checking is enabled" -Status "ERROR" -Details $_.Exception.Message
+    }
     
-    foreach ($control in $additionalControls) {
-        Add-CISResult -ControlID $control.ID -Section $section -Title $control.Title -Status "REVIEW" -Details "Manual verification required" -Recommendation "Verify configuration manually"
+    # CIS-4.1.3: Ensure SSH protocol 2 is used
+    try {
+        $esxiHosts = Get-VMHost
+        $sshEnabledHosts = @()
+        foreach ($host in $esxiHosts) {
+            $sshService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "TSM-SSH" }
+            if ($sshService.Running -eq $true) {
+                $sshEnabledHosts += $host.Name
+            }
+        }
+        if ($sshEnabledHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.1.3" -Section $section -Title "Ensure SSH protocol 2 is used" -Status "PASS" -Details "SSH disabled on all hosts"
+        } else {
+            Add-CISResult -ControlID "CIS-4.1.3" -Section $section -Title "Ensure SSH protocol 2 is used" -Status "REVIEW" -Details "SSH enabled on: $($sshEnabledHosts -join ', ')" -Recommendation "Verify SSH protocol 2 is configured"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.1.3" -Section $section -Title "Ensure SSH protocol 2 is used" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.1.4: Ensure SSH idle timeout is configured
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $sshTimeout = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.ESXiShellInteractiveTimeOut" -ErrorAction SilentlyContinue
+            if ($sshTimeout -and [int]$sshTimeout.Value -gt 600) {
+                $nonCompliantHosts += "$($host.Name):$($sshTimeout.Value)s"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.1.4" -Section $section -Title "Ensure SSH idle timeout is configured" -Status "PASS" -Details "SSH timeout properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-4.1.4" -Section $section -Title "Ensure SSH idle timeout is configured" -Status "FAIL" -Details "High timeout on: $($nonCompliantHosts -join ', ')" -Recommendation "Set SSH timeout to 600 seconds or less"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.1.4" -Section $section -Title "Ensure SSH idle timeout is configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.1.5: Ensure SSH max authentication attempts is set
+    try {
+        $esxiHosts = Get-VMHost
+        $sshEnabledHosts = @()
+        foreach ($host in $esxiHosts) {
+            $sshService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "TSM-SSH" }
+            if ($sshService.Running -eq $true) {
+                $sshEnabledHosts += $host.Name
+            }
+        }
+        if ($sshEnabledHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.1.5" -Section $section -Title "Ensure SSH max authentication attempts is set" -Status "PASS" -Details "SSH disabled on all hosts"
+        } else {
+            Add-CISResult -ControlID "CIS-4.1.5" -Section $section -Title "Ensure SSH max authentication attempts is set" -Status "REVIEW" -Details "SSH enabled on: $($sshEnabledHosts -join ', ')" -Recommendation "Verify SSH MaxAuthTries is set to 3 or less"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.1.5" -Section $section -Title "Ensure SSH max authentication attempts is set" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.2.2: Ensure password complexity is enforced
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $passwordPolicy = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Security.PasswordQualityControl" -ErrorAction SilentlyContinue
+            if (-not $passwordPolicy -or $passwordPolicy.Value -notmatch "similar=deny|retry=3") {
+                $nonCompliantHosts += $host.Name
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.2.2" -Section $section -Title "Ensure password complexity is enforced" -Status "PASS" -Details "Password complexity enforced"
+        } else {
+            Add-CISResult -ControlID "CIS-4.2.2" -Section $section -Title "Ensure password complexity is enforced" -Status "FAIL" -Details "Weak password policy: $($nonCompliantHosts -join ', ')" -Recommendation "Configure strong password complexity requirements"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.2.2" -Section $section -Title "Ensure password complexity is enforced" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.2.3: Ensure password reuse is limited
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $passwordHistory = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Security.PasswordHistory" -ErrorAction SilentlyContinue
+            if (-not $passwordHistory -or [int]$passwordHistory.Value -lt 5) {
+                $nonCompliantHosts += "$($host.Name):$($passwordHistory.Value)"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.2.3" -Section $section -Title "Ensure password reuse is limited" -Status "PASS" -Details "Password reuse properly limited"
+        } else {
+            Add-CISResult -ControlID "CIS-4.2.3" -Section $section -Title "Ensure password reuse is limited" -Status "FAIL" -Details "Weak password history: $($nonCompliantHosts -join ', ')" -Recommendation "Set password history to 5 or more"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.2.3" -Section $section -Title "Ensure password reuse is limited" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.2.4: Ensure account lockout is configured
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $accountLockout = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Security.AccountLockFailures" -ErrorAction SilentlyContinue
+            if (-not $accountLockout -or [int]$accountLockout.Value -eq 0 -or [int]$accountLockout.Value -gt 5) {
+                $nonCompliantHosts += "$($host.Name):$($accountLockout.Value)"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.2.4" -Section $section -Title "Ensure account lockout is configured" -Status "PASS" -Details "Account lockout properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-4.2.4" -Section $section -Title "Ensure account lockout is configured" -Status "FAIL" -Details "Weak lockout policy: $($nonCompliantHosts -join ', ')" -Recommendation "Set account lockout to 3-5 failures"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.2.4" -Section $section -Title "Ensure account lockout is configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.3.1: Ensure Active Directory authentication is used
+    try {
+        $esxiHosts = Get-VMHost
+        $adJoinedHosts = @()
+        $nonAdHosts = @()
+        foreach ($host in $esxiHosts) {
+            $adConfig = Get-VMHostAuthentication -VMHost $host
+            if ($adConfig.Domain -and $adConfig.Domain -ne "") {
+                $adJoinedHosts += "$($host.Name):$($adConfig.Domain)"
+            } else {
+                $nonAdHosts += $host.Name
+            }
+        }
+        if ($nonAdHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.3.1" -Section $section -Title "Ensure Active Directory authentication is used" -Status "PASS" -Details "All hosts use AD authentication: $($adJoinedHosts -join ', ')"
+        } else {
+            Add-CISResult -ControlID "CIS-4.3.1" -Section $section -Title "Ensure Active Directory authentication is used" -Status "REVIEW" -Details "Non-AD hosts: $($nonAdHosts -join ', ')" -Recommendation "Consider joining hosts to Active Directory"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.3.1" -Section $section -Title "Ensure Active Directory authentication is used" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.3.2: Ensure only authorized users belong to esxAdminsGroup
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsToReview = @()
+        foreach ($host in $esxiHosts) {
+            $adConfig = Get-VMHostAuthentication -VMHost $host
+            if ($adConfig.Domain -and $adConfig.Domain -ne "") {
+                $hostsToReview += "$($host.Name):$($adConfig.Domain)"
+            }
+        }
+        if ($hostsToReview.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.3.2" -Section $section -Title "Ensure only authorized users belong to esxAdminsGroup" -Status "INFO" -Details "No AD-joined hosts found"
+        } else {
+            Add-CISResult -ControlID "CIS-4.3.2" -Section $section -Title "Ensure only authorized users belong to esxAdminsGroup" -Status "REVIEW" -Details "AD hosts: $($hostsToReview -join ', ')" -Recommendation "Verify esxAdminsGroup membership in Active Directory"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.3.2" -Section $section -Title "Ensure only authorized users belong to esxAdminsGroup" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.3.3: Ensure exception users are configured properly
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithExceptions = @()
+        foreach ($host in $esxiHosts) {
+            $lockdownMode = $host.ExtensionData.Config.LockdownMode
+            if ($lockdownMode -ne "lockdownDisabled") {
+                $exceptionUsers = $host.ExtensionData.Config.AdminDisabled
+                if ($exceptionUsers -and $exceptionUsers.Count -gt 0) {
+                    $hostsWithExceptions += "$($host.Name):$($exceptionUsers.Count) exceptions"
+                }
+            }
+        }
+        if ($hostsWithExceptions.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.3.3" -Section $section -Title "Ensure exception users are configured properly" -Status "PASS" -Details "No exception users or lockdown disabled"
+        } else {
+            Add-CISResult -ControlID "CIS-4.3.3" -Section $section -Title "Ensure exception users are configured properly" -Status "REVIEW" -Details "Exception users: $($hostsWithExceptions -join ', ')" -Recommendation "Review exception user configurations"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.3.3" -Section $section -Title "Ensure exception users are configured properly" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.4.1: Ensure vCenter Server permissions are configured properly
+    try {
+        $permissions = Get-VIPermission
+        $adminPermissions = $permissions | Where-Object { $_.Role -eq "Admin" }
+        $excessiveAdmins = $adminPermissions | Where-Object { $_.Principal -notmatch "Administrator|root|admin" }
+        if ($excessiveAdmins.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.4.1" -Section $section -Title "Ensure vCenter Server permissions are configured properly" -Status "PASS" -Details "Admin permissions properly assigned"
+        } else {
+            Add-CISResult -ControlID "CIS-4.4.1" -Section $section -Title "Ensure vCenter Server permissions are configured properly" -Status "REVIEW" -Details "$($excessiveAdmins.Count) non-standard admin accounts" -Recommendation "Review admin permission assignments"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.4.1" -Section $section -Title "Ensure vCenter Server permissions are configured properly" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.4.2: Ensure vCenter Server roles are configured properly
+    try {
+        $customRoles = Get-VIRole | Where-Object { $_.IsSystem -eq $false }
+        $rolesWithExcessivePrivs = @()
+        foreach ($role in $customRoles) {
+            $privileges = Get-VIPrivilege -Role $role
+            $adminPrivs = $privileges | Where-Object { $_.Id -match "System\.Anonymous|System\.View" }
+            if ($adminPrivs.Count -gt 0) {
+                $rolesWithExcessivePrivs += "$($role.Name):$($adminPrivs.Count) system privs"
+            }
+        }
+        if ($rolesWithExcessivePrivs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.4.2" -Section $section -Title "Ensure vCenter Server roles are configured properly" -Status "PASS" -Details "Custom roles properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-4.4.2" -Section $section -Title "Ensure vCenter Server roles are configured properly" -Status "REVIEW" -Details "Roles with system privs: $($rolesWithExcessivePrivs -join ', ')" -Recommendation "Review custom role privileges"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.4.2" -Section $section -Title "Ensure vCenter Server roles are configured properly" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.5.1: Ensure ESXi host local user accounts are configured properly
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithLocalUsers = @()
+        foreach ($host in $esxiHosts) {
+            $localUsers = Get-VMHostAccount -VMHost $host -User
+            $nonSystemUsers = $localUsers | Where-Object { $_.Id -notmatch "root|dcui" }
+            if ($nonSystemUsers.Count -gt 0) {
+                $hostsWithLocalUsers += "$($host.Name):$($nonSystemUsers.Count) local users"
+            }
+        }
+        if ($hostsWithLocalUsers.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.5.1" -Section $section -Title "Ensure ESXi host local user accounts are configured properly" -Status "PASS" -Details "Only system accounts found"
+        } else {
+            Add-CISResult -ControlID "CIS-4.5.1" -Section $section -Title "Ensure ESXi host local user accounts are configured properly" -Status "REVIEW" -Details "Local users: $($hostsWithLocalUsers -join ', ')" -Recommendation "Review local user account necessity"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.5.1" -Section $section -Title "Ensure ESXi host local user accounts are configured properly" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.5.2: Ensure default ESXi admin account is secured
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithWeakRoot = @()
+        foreach ($host in $esxiHosts) {
+            $rootAccount = Get-VMHostAccount -VMHost $host -User | Where-Object { $_.Id -eq "root" }
+            if ($rootAccount -and $rootAccount.Description -eq "") {
+                $hostsWithWeakRoot += $host.Name
+            }
+        }
+        if ($hostsWithWeakRoot.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.5.2" -Section $section -Title "Ensure default ESXi admin account is secured" -Status "PASS" -Details "Root accounts properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-4.5.2" -Section $section -Title "Ensure default ESXi admin account is secured" -Status "REVIEW" -Details "Check root accounts on: $($hostsWithWeakRoot -join ', ')" -Recommendation "Secure root account with strong password and description"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.5.2" -Section $section -Title "Ensure default ESXi admin account is secured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.6.1: Ensure certificate-based authentication is used
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithCertAuth = @()
+        foreach ($host in $esxiHosts) {
+            $certConfig = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.ESXiVPsDisabledProtocols" -ErrorAction SilentlyContinue
+            if ($certConfig -and $certConfig.Value -match "sslv3|tlsv1") {
+                $hostsWithCertAuth += $host.Name
+            }
+        }
+        Add-CISResult -ControlID "CIS-4.6.1" -Section $section -Title "Ensure certificate-based authentication is used" -Status "REVIEW" -Details "Certificate authentication configuration" -Recommendation "Verify certificate-based authentication is properly configured"
+    } catch {
+        Add-CISResult -ControlID "CIS-4.6.1" -Section $section -Title "Ensure certificate-based authentication is used" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.6.2: Ensure multi-factor authentication is enabled
+    try {
+        $vcenterInfo = $global:DefaultVIServer
+        $ssoConfig = Get-SsoConfiguration -ErrorAction SilentlyContinue
+        if ($ssoConfig) {
+            Add-CISResult -ControlID "CIS-4.6.2" -Section $section -Title "Ensure multi-factor authentication is enabled" -Status "REVIEW" -Details "SSO configuration detected" -Recommendation "Verify multi-factor authentication is enabled in SSO"
+        } else {
+            Add-CISResult -ControlID "CIS-4.6.2" -Section $section -Title "Ensure multi-factor authentication is enabled" -Status "REVIEW" -Details "Check MFA configuration" -Recommendation "Enable multi-factor authentication for enhanced security"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-4.6.2" -Section $section -Title "Ensure multi-factor authentication is enabled" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
@@ -521,20 +1154,163 @@ function Test-Section5-Controls {
         Add-CISResult -ControlID "CIS-5.2.1" -Section $section -Title "Ensure lockdown mode is enabled" -Status "ERROR" -Details $_.Exception.Message
     }
     
-    # Additional console controls
-    $additionalControls = @(
-        @{ID="CIS-5.1.2"; Title="Ensure ESXi shell interactive timeout is configured"},
-        @{ID="CIS-5.1.3"; Title="Ensure ESXi shell timeout is configured"},
-        @{ID="CIS-5.1.4"; Title="Ensure SSH authorized keys file is empty"},
-        @{ID="CIS-5.2.2"; Title="Ensure strict lockdown mode is enabled"},
-        @{ID="CIS-5.2.3"; Title="Ensure DCUI has trusted users for lockdown mode"},
-        @{ID="CIS-5.3.1"; Title="Ensure CIM access is limited"},
-        @{ID="CIS-5.4.1"; Title="Ensure contents of exposed configuration files are not modified"},
-        @{ID="CIS-5.4.2"; Title="Ensure system resource allocation is configured"}
-    )
+    # CIS-5.1.2: Ensure ESXi shell interactive timeout is configured
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $interactiveTimeout = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.ESXiShellInteractiveTimeOut"
+            if ([int]$interactiveTimeout.Value -eq 0 -or [int]$interactiveTimeout.Value -gt 600) {
+                $nonCompliantHosts += "$($host.Name):$($interactiveTimeout.Value)s"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-5.1.2" -Section $section -Title "Ensure ESXi shell interactive timeout is configured" -Status "PASS" -Details "Interactive timeout properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-5.1.2" -Section $section -Title "Ensure ESXi shell interactive timeout is configured" -Status "FAIL" -Details "Timeout issues: $($nonCompliantHosts -join ', ')" -Recommendation "Set interactive timeout to 600 seconds or less"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-5.1.2" -Section $section -Title "Ensure ESXi shell interactive timeout is configured" -Status "ERROR" -Details $_.Exception.Message
+    }
     
-    foreach ($control in $additionalControls) {
-        Add-CISResult -ControlID $control.ID -Section $section -Title $control.Title -Status "REVIEW" -Details "Manual verification required" -Recommendation "Verify configuration manually"
+    # CIS-5.1.3: Ensure ESXi shell timeout is configured
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $shellTimeout = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.ESXiShellTimeOut"
+            if ([int]$shellTimeout.Value -eq 0 -or [int]$shellTimeout.Value -gt 3600) {
+                $nonCompliantHosts += "$($host.Name):$($shellTimeout.Value)s"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-5.1.3" -Section $section -Title "Ensure ESXi shell timeout is configured" -Status "PASS" -Details "Shell timeout properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-5.1.3" -Section $section -Title "Ensure ESXi shell timeout is configured" -Status "FAIL" -Details "Timeout issues: $($nonCompliantHosts -join ', ')" -Recommendation "Set shell timeout to 3600 seconds or less"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-5.1.3" -Section $section -Title "Ensure ESXi shell timeout is configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-5.1.4: Ensure SSH authorized keys file is empty
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithKeys = @()
+        foreach ($host in $esxiHosts) {
+            # This requires SSH access to check, so we'll check if SSH is enabled
+            $sshService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "TSM-SSH" }
+            if ($sshService.Running -eq $true) {
+                $hostsWithKeys += "$($host.Name):SSH enabled"
+            }
+        }
+        if ($hostsWithKeys.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-5.1.4" -Section $section -Title "Ensure SSH authorized keys file is empty" -Status "PASS" -Details "SSH disabled on all hosts"
+        } else {
+            Add-CISResult -ControlID "CIS-5.1.4" -Section $section -Title "Ensure SSH authorized keys file is empty" -Status "REVIEW" -Details "SSH enabled on: $($hostsWithKeys -join ', ')" -Recommendation "Verify authorized_keys files are empty"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-5.1.4" -Section $section -Title "Ensure SSH authorized keys file is empty" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-5.2.2: Ensure strict lockdown mode is enabled
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $lockdownMode = $host.ExtensionData.Config.LockdownMode
+            if ($lockdownMode -ne "lockdownStrict") {
+                $nonCompliantHosts += "$($host.Name):$lockdownMode"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-5.2.2" -Section $section -Title "Ensure strict lockdown mode is enabled" -Status "PASS" -Details "Strict lockdown enabled on all hosts"
+        } else {
+            Add-CISResult -ControlID "CIS-5.2.2" -Section $section -Title "Ensure strict lockdown mode is enabled" -Status "REVIEW" -Details "Non-strict lockdown: $($nonCompliantHosts -join ', ')" -Recommendation "Enable strict lockdown mode for maximum security"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-5.2.2" -Section $section -Title "Ensure strict lockdown mode is enabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-5.2.3: Ensure DCUI has trusted users for lockdown mode
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithoutTrustedUsers = @()
+        foreach ($host in $esxiHosts) {
+            $lockdownMode = $host.ExtensionData.Config.LockdownMode
+            if ($lockdownMode -ne "lockdownDisabled") {
+                $trustedUsers = $host.ExtensionData.Config.AdminDisabled
+                if (-not $trustedUsers -or $trustedUsers.Count -eq 0) {
+                    $hostsWithoutTrustedUsers += $host.Name
+                }
+            }
+        }
+        if ($hostsWithoutTrustedUsers.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-5.2.3" -Section $section -Title "Ensure DCUI has trusted users for lockdown mode" -Status "PASS" -Details "Trusted users configured or lockdown disabled"
+        } else {
+            Add-CISResult -ControlID "CIS-5.2.3" -Section $section -Title "Ensure DCUI has trusted users for lockdown mode" -Status "REVIEW" -Details "No trusted users: $($hostsWithoutTrustedUsers -join ', ')" -Recommendation "Configure trusted users for DCUI access in lockdown mode"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-5.2.3" -Section $section -Title "Ensure DCUI has trusted users for lockdown mode" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-5.3.1: Ensure CIM access is limited
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $cimService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "sfcbd-watchdog" }
+            if ($cimService.Running -eq $true) {
+                $firewallRules = Get-VMHostFirewallException -VMHost $host | Where-Object { $_.Name -match "CIM" -and $_.Enabled -eq $true }
+                if ($firewallRules) {
+                    $nonCompliantHosts += "$($host.Name):CIM enabled"
+                }
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-5.3.1" -Section $section -Title "Ensure CIM access is limited" -Status "PASS" -Details "CIM access properly limited"
+        } else {
+            Add-CISResult -ControlID "CIS-5.3.1" -Section $section -Title "Ensure CIM access is limited" -Status "REVIEW" -Details "CIM enabled on: $($nonCompliantHosts -join ', ')" -Recommendation "Limit CIM access to authorized management systems only"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-5.3.1" -Section $section -Title "Ensure CIM access is limited" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-5.4.1: Ensure contents of exposed configuration files are not modified
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsToReview = @()
+        foreach ($host in $esxiHosts) {
+            $configFiles = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.SuppressShellWarning" -ErrorAction SilentlyContinue
+            if ($configFiles -and $configFiles.Value -eq 1) {
+                $hostsToReview += "$($host.Name):Shell warning suppressed"
+            }
+        }
+        if ($hostsToReview.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-5.4.1" -Section $section -Title "Ensure contents of exposed configuration files are not modified" -Status "PASS" -Details "Shell warnings not suppressed"
+        } else {
+            Add-CISResult -ControlID "CIS-5.4.1" -Section $section -Title "Ensure contents of exposed configuration files are not modified" -Status "REVIEW" -Details "Check config files: $($hostsToReview -join ', ')" -Recommendation "Verify configuration files have not been improperly modified"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-5.4.1" -Section $section -Title "Ensure contents of exposed configuration files are not modified" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-5.4.2: Ensure system resource allocation is configured
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithIssues = @()
+        foreach ($host in $esxiHosts) {
+            $memReservation = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Mem.MemMinFreePct" -ErrorAction SilentlyContinue
+            if ($memReservation -and [int]$memReservation.Value -lt 6) {
+                $hostsWithIssues += "$($host.Name):MemMinFreePct=$($memReservation.Value)"
+            }
+        }
+        if ($hostsWithIssues.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-5.4.2" -Section $section -Title "Ensure system resource allocation is configured" -Status "PASS" -Details "System resource allocation properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-5.4.2" -Section $section -Title "Ensure system resource allocation is configured" -Status "REVIEW" -Details "Resource issues: $($hostsWithIssues -join ', ')" -Recommendation "Configure adequate system resource reservations"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-5.4.2" -Section $section -Title "Ensure system resource allocation is configured" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
@@ -563,17 +1339,129 @@ function Test-Section6-Controls {
         Add-CISResult -ControlID "CIS-6.1.1" -Section $section -Title "Ensure Storage I/O Control is enabled" -Status "ERROR" -Details $_.Exception.Message
     }
     
-    # Additional storage controls
-    $additionalControls = @(
-        @{ID="CIS-6.1.2"; Title="Ensure bidirectional CHAP authentication for iSCSI traffic is enabled"},
-        @{ID="CIS-6.1.3"; Title="Ensure uniqueness of CHAP authentication secrets for iSCSI traffic"},
-        @{ID="CIS-6.2.1"; Title="Ensure SAN resources are segregated properly"},
-        @{ID="CIS-6.3.1"; Title="Ensure datastore access is controlled"},
-        @{ID="CIS-6.3.2"; Title="Ensure storage encryption is enabled"}
-    )
+    # CIS-6.1.2: Ensure bidirectional CHAP authentication for iSCSI traffic is enabled
+    try {
+        $esxiHosts = Get-VMHost
+        $iscsiHosts = @()
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            $iscsiHba = Get-VMHostHba -VMHost $host -Type iSCSI -ErrorAction SilentlyContinue
+            if ($iscsiHba) {
+                $iscsiHosts += $host.Name
+                foreach ($hba in $iscsiHba) {
+                    $chapConfig = $hba.AuthenticationProperties
+                    if (-not $chapConfig.ChapType -or $chapConfig.ChapType -ne "bidirectional") {
+                        $nonCompliantHosts += "$($host.Name):$($hba.Device)"
+                    }
+                }
+            }
+        }
+        if ($iscsiHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-6.1.2" -Section $section -Title "Ensure bidirectional CHAP authentication for iSCSI traffic is enabled" -Status "INFO" -Details "No iSCSI adapters found"
+        } elseif ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-6.1.2" -Section $section -Title "Ensure bidirectional CHAP authentication for iSCSI traffic is enabled" -Status "PASS" -Details "Bidirectional CHAP configured on all iSCSI adapters"
+        } else {
+            Add-CISResult -ControlID "CIS-6.1.2" -Section $section -Title "Ensure bidirectional CHAP authentication for iSCSI traffic is enabled" -Status "FAIL" -Details "CHAP issues: $($nonCompliantHosts -join ', ')" -Recommendation "Enable bidirectional CHAP authentication for iSCSI"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-6.1.2" -Section $section -Title "Ensure bidirectional CHAP authentication for iSCSI traffic is enabled" -Status "ERROR" -Details $_.Exception.Message
+    }
     
-    foreach ($control in $additionalControls) {
-        Add-CISResult -ControlID $control.ID -Section $section -Title $control.Title -Status "REVIEW" -Details "Manual verification required" -Recommendation "Verify configuration manually"
+    # CIS-6.1.3: Ensure uniqueness of CHAP authentication secrets for iSCSI traffic
+    try {
+        $esxiHosts = Get-VMHost
+        $chapSecrets = @{}
+        $duplicateSecrets = @()
+        foreach ($host in $esxiHosts) {
+            $iscsiHba = Get-VMHostHba -VMHost $host -Type iSCSI -ErrorAction SilentlyContinue
+            if ($iscsiHba) {
+                foreach ($hba in $iscsiHba) {
+                    $chapConfig = $hba.AuthenticationProperties
+                    if ($chapConfig.ChapName) {
+                        $secretKey = "$($chapConfig.ChapName):$($host.Name)"
+                        if ($chapSecrets.ContainsKey($chapConfig.ChapName)) {
+                            $duplicateSecrets += $secretKey
+                        } else {
+                            $chapSecrets[$chapConfig.ChapName] = $secretKey
+                        }
+                    }
+                }
+            }
+        }
+        if ($chapSecrets.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-6.1.3" -Section $section -Title "Ensure uniqueness of CHAP authentication secrets for iSCSI traffic" -Status "INFO" -Details "No CHAP authentication configured"
+        } elseif ($duplicateSecrets.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-6.1.3" -Section $section -Title "Ensure uniqueness of CHAP authentication secrets for iSCSI traffic" -Status "PASS" -Details "All CHAP secrets are unique"
+        } else {
+            Add-CISResult -ControlID "CIS-6.1.3" -Section $section -Title "Ensure uniqueness of CHAP authentication secrets for iSCSI traffic" -Status "FAIL" -Details "Duplicate CHAP secrets found" -Recommendation "Ensure each iSCSI adapter has unique CHAP secrets"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-6.1.3" -Section $section -Title "Ensure uniqueness of CHAP authentication secrets for iSCSI traffic" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-6.2.1: Ensure SAN resources are segregated properly
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithMultiplePaths = @()
+        foreach ($host in $esxiHosts) {
+            $scsiLuns = Get-ScsiLun -VMHost $host -LunType disk -ErrorAction SilentlyContinue
+            foreach ($lun in $scsiLuns) {
+                $paths = Get-ScsiLunPath -ScsiLun $lun
+                if ($paths.Count -gt 1) {
+                    $hostsWithMultiplePaths += "$($host.Name):$($lun.CanonicalName):$($paths.Count) paths"
+                }
+            }
+        }
+        if ($hostsWithMultiplePaths.Count -gt 0) {
+            Add-CISResult -ControlID "CIS-6.2.1" -Section $section -Title "Ensure SAN resources are segregated properly" -Status "REVIEW" -Details "Multiple paths detected" -Recommendation "Verify SAN path segregation and zoning"
+        } else {
+            Add-CISResult -ControlID "CIS-6.2.1" -Section $section -Title "Ensure SAN resources are segregated properly" -Status "INFO" -Details "Single path configuration or no SAN storage"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-6.2.1" -Section $section -Title "Ensure SAN resources are segregated properly" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-6.3.1: Ensure datastore access is controlled
+    try {
+        $datastores = Get-Datastore
+        $sharedDatastores = @()
+        foreach ($ds in $datastores) {
+            $connectedHosts = $ds.ExtensionData.Host
+            if ($connectedHosts.Count -gt 1) {
+                $sharedDatastores += "$($ds.Name):$($connectedHosts.Count) hosts"
+            }
+        }
+        if ($sharedDatastores.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-6.3.1" -Section $section -Title "Ensure datastore access is controlled" -Status "PASS" -Details "No shared datastores or proper access control"
+        } else {
+            Add-CISResult -ControlID "CIS-6.3.1" -Section $section -Title "Ensure datastore access is controlled" -Status "REVIEW" -Details "Shared datastores: $($sharedDatastores -join ', ')" -Recommendation "Verify datastore access permissions are properly configured"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-6.3.1" -Section $section -Title "Ensure datastore access is controlled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-6.3.2: Ensure storage encryption is enabled
+    try {
+        $vms = Get-VM
+        $encryptedVMs = @()
+        $unencryptedVMs = @()
+        foreach ($vm in $vms) {
+            $vmConfig = $vm.ExtensionData.Config
+            if ($vmConfig.KeyId) {
+                $encryptedVMs += $vm.Name
+            } else {
+                $unencryptedVMs += $vm.Name
+            }
+        }
+        if ($encryptedVMs.Count -eq $vms.Count) {
+            Add-CISResult -ControlID "CIS-6.3.2" -Section $section -Title "Ensure storage encryption is enabled" -Status "PASS" -Details "All VMs are encrypted"
+        } elseif ($encryptedVMs.Count -gt 0) {
+            Add-CISResult -ControlID "CIS-6.3.2" -Section $section -Title "Ensure storage encryption is enabled" -Status "REVIEW" -Details "$($encryptedVMs.Count)/$($vms.Count) VMs encrypted" -Recommendation "Consider enabling encryption for all sensitive VMs"
+        } else {
+            Add-CISResult -ControlID "CIS-6.3.2" -Section $section -Title "Ensure storage encryption is enabled" -Status "INFO" -Details "No VM encryption detected" -Recommendation "Consider enabling VM encryption for sensitive workloads"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-6.3.2" -Section $section -Title "Ensure storage encryption is enabled" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
@@ -624,22 +1512,239 @@ function Test-Section7-Controls {
         Add-CISResult -ControlID "CIS-7.2.1" -Section $section -Title "Ensure port groups are not configured to VLAN 0 or 4095" -Status "ERROR" -Details $_.Exception.Message
     }
     
-    # Additional network controls
-    $additionalControls = @(
-        @{ID="CIS-7.1.2"; Title="Ensure vSwitch forged transmits policy is set to reject"},
-        @{ID="CIS-7.1.3"; Title="Ensure vSwitch MAC address change policy is set to reject"},
-        @{ID="CIS-7.1.4"; Title="Ensure vSwitch promiscuous mode policy is set to reject"},
-        @{ID="CIS-7.2.2"; Title="Ensure port groups are not configured to native VLAN"},
-        @{ID="CIS-7.2.3"; Title="Ensure port groups are not configured to reserved VLANs"},
-        @{ID="CIS-7.3.1"; Title="Ensure Virtual Distributed Switch Netflow traffic is sent to authorized collector"},
-        @{ID="CIS-7.3.2"; Title="Ensure port-level configuration overrides are disabled"},
-        @{ID="CIS-7.4.1"; Title="Ensure network isolation is properly configured"},
-        @{ID="CIS-7.4.2"; Title="Ensure network redundancy is configured"},
-        @{ID="CIS-7.5.1"; Title="Ensure network security policies are applied consistently"}
-    )
+    # CIS-7.1.2: Ensure vSwitch forged transmits policy is set to reject
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantSwitches = @()
+        foreach ($host in $esxiHosts) {
+            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard
+            foreach ($vSwitch in $vSwitches) {
+                $secPolicy = Get-SecurityPolicy -VirtualSwitch $vSwitch
+                if ($secPolicy.ForgedTransmits -eq $true) {
+                    $nonCompliantSwitches += "$($host.Name):$($vSwitch.Name)"
+                }
+            }
+        }
+        if ($nonCompliantSwitches.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.1.2" -Section $section -Title "Ensure vSwitch forged transmits policy is set to reject" -Status "PASS" -Details "Forged transmits rejected on all switches"
+        } else {
+            Add-CISResult -ControlID "CIS-7.1.2" -Section $section -Title "Ensure vSwitch forged transmits policy is set to reject" -Status "FAIL" -Details "Forged transmits allowed: $($nonCompliantSwitches -join ', ')" -Recommendation "Set forged transmits policy to reject"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-7.1.2" -Section $section -Title "Ensure vSwitch forged transmits policy is set to reject" -Status "ERROR" -Details $_.Exception.Message
+    }
     
-    foreach ($control in $additionalControls) {
-        Add-CISResult -ControlID $control.ID -Section $section -Title $control.Title -Status "REVIEW" -Details "Manual verification required" -Recommendation "Verify configuration manually"
+    # CIS-7.1.3: Ensure vSwitch MAC address change policy is set to reject
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantSwitches = @()
+        foreach ($host in $esxiHosts) {
+            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard
+            foreach ($vSwitch in $vSwitches) {
+                $secPolicy = Get-SecurityPolicy -VirtualSwitch $vSwitch
+                if ($secPolicy.MacChanges -eq $true) {
+                    $nonCompliantSwitches += "$($host.Name):$($vSwitch.Name)"
+                }
+            }
+        }
+        if ($nonCompliantSwitches.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.1.3" -Section $section -Title "Ensure vSwitch MAC address change policy is set to reject" -Status "PASS" -Details "MAC changes rejected on all switches"
+        } else {
+            Add-CISResult -ControlID "CIS-7.1.3" -Section $section -Title "Ensure vSwitch MAC address change policy is set to reject" -Status "FAIL" -Details "MAC changes allowed: $($nonCompliantSwitches -join ', ')" -Recommendation "Set MAC address change policy to reject"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-7.1.3" -Section $section -Title "Ensure vSwitch MAC address change policy is set to reject" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-7.1.4: Ensure vSwitch promiscuous mode policy is set to reject
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantSwitches = @()
+        foreach ($host in $esxiHosts) {
+            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard
+            foreach ($vSwitch in $vSwitches) {
+                $secPolicy = Get-SecurityPolicy -VirtualSwitch $vSwitch
+                if ($secPolicy.AllowPromiscuous -eq $true) {
+                    $nonCompliantSwitches += "$($host.Name):$($vSwitch.Name)"
+                }
+            }
+        }
+        if ($nonCompliantSwitches.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.1.4" -Section $section -Title "Ensure vSwitch promiscuous mode policy is set to reject" -Status "PASS" -Details "Promiscuous mode rejected on all switches"
+        } else {
+            Add-CISResult -ControlID "CIS-7.1.4" -Section $section -Title "Ensure vSwitch promiscuous mode policy is set to reject" -Status "FAIL" -Details "Promiscuous mode allowed: $($nonCompliantSwitches -join ', ')" -Recommendation "Set promiscuous mode policy to reject"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-7.1.4" -Section $section -Title "Ensure vSwitch promiscuous mode policy is set to reject" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-7.2.2: Ensure port groups are not configured to native VLAN
+    try {
+        $portGroups = Get-VirtualPortGroup -Standard
+        $nativeVlanGroups = @()
+        foreach ($pg in $portGroups) {
+            if ($pg.VlanId -eq 1) {
+                $nativeVlanGroups += "$($pg.VirtualSwitch.VMHost.Name):$($pg.Name):VLAN1"
+            }
+        }
+        if ($nativeVlanGroups.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.2.2" -Section $section -Title "Ensure port groups are not configured to native VLAN" -Status "PASS" -Details "No port groups using native VLAN 1"
+        } else {
+            Add-CISResult -ControlID "CIS-7.2.2" -Section $section -Title "Ensure port groups are not configured to native VLAN" -Status "FAIL" -Details "Native VLAN usage: $($nativeVlanGroups -join ', ')" -Recommendation "Change port groups from native VLAN 1"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-7.2.2" -Section $section -Title "Ensure port groups are not configured to native VLAN" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-7.2.3: Ensure port groups are not configured to reserved VLANs
+    try {
+        $portGroups = Get-VirtualPortGroup -Standard
+        $reservedVlanGroups = @()
+        $reservedVlans = @(0, 1, 1002, 1003, 1004, 1005, 4094, 4095)
+        foreach ($pg in $portGroups) {
+            if ($pg.VlanId -in $reservedVlans) {
+                $reservedVlanGroups += "$($pg.VirtualSwitch.VMHost.Name):$($pg.Name):VLAN$($pg.VlanId)"
+            }
+        }
+        if ($reservedVlanGroups.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.2.3" -Section $section -Title "Ensure port groups are not configured to reserved VLANs" -Status "PASS" -Details "No port groups using reserved VLANs"
+        } else {
+            Add-CISResult -ControlID "CIS-7.2.3" -Section $section -Title "Ensure port groups are not configured to reserved VLANs" -Status "FAIL" -Details "Reserved VLAN usage: $($reservedVlanGroups -join ', ')" -Recommendation "Change port groups from reserved VLAN IDs"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-7.2.3" -Section $section -Title "Ensure port groups are not configured to reserved VLANs" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-7.3.1: Ensure Virtual Distributed Switch Netflow traffic is sent to authorized collector
+    try {
+        $vdSwitches = Get-VDSwitch -ErrorAction SilentlyContinue
+        $nonCompliantSwitches = @()
+        foreach ($vds in $vdSwitches) {
+            $netflowConfig = $vds.ExtensionData.Config.IpfixConfig
+            if ($netflowConfig -and $netflowConfig.CollectorIpAddress) {
+                # Check if collector IP is in private ranges (should be authorized)
+                $collectorIP = $netflowConfig.CollectorIpAddress
+                if ($collectorIP -notmatch "^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)" -and $collectorIP -ne "127.0.0.1") {
+                    $nonCompliantSwitches += "$($vds.Name):$collectorIP"
+                }
+            }
+        }
+        if ($vdSwitches.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.3.1" -Section $section -Title "Ensure Virtual Distributed Switch Netflow traffic is sent to authorized collector" -Status "INFO" -Details "No VDS found"
+        } elseif ($nonCompliantSwitches.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.3.1" -Section $section -Title "Ensure Virtual Distributed Switch Netflow traffic is sent to authorized collector" -Status "PASS" -Details "Netflow collectors properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-7.3.1" -Section $section -Title "Ensure Virtual Distributed Switch Netflow traffic is sent to authorized collector" -Status "REVIEW" -Details "External collectors: $($nonCompliantSwitches -join ', ')" -Recommendation "Verify Netflow collectors are authorized"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-7.3.1" -Section $section -Title "Ensure Virtual Distributed Switch Netflow traffic is sent to authorized collector" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-7.3.2: Ensure port-level configuration overrides are disabled
+    try {
+        $vdSwitches = Get-VDSwitch -ErrorAction SilentlyContinue
+        $nonCompliantSwitches = @()
+        foreach ($vds in $vdSwitches) {
+            $portGroups = Get-VDPortgroup -VDSwitch $vds
+            foreach ($pg in $portGroups) {
+                $pgConfig = $pg.ExtensionData.Config
+                if ($pgConfig.Policy.SecurityPolicy.AllowPromiscuous.Inherited -eq $false -or
+                    $pgConfig.Policy.SecurityPolicy.MacChanges.Inherited -eq $false -or
+                    $pgConfig.Policy.SecurityPolicy.ForgedTransmits.Inherited -eq $false) {
+                    $nonCompliantSwitches += "$($vds.Name):$($pg.Name)"
+                }
+            }
+        }
+        if ($vdSwitches.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.3.2" -Section $section -Title "Ensure port-level configuration overrides are disabled" -Status "INFO" -Details "No VDS found"
+        } elseif ($nonCompliantSwitches.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.3.2" -Section $section -Title "Ensure port-level configuration overrides are disabled" -Status "PASS" -Details "No port-level overrides detected"
+        } else {
+            Add-CISResult -ControlID "CIS-7.3.2" -Section $section -Title "Ensure port-level configuration overrides are disabled" -Status "FAIL" -Details "Port overrides: $($nonCompliantSwitches -join ', ')" -Recommendation "Disable port-level configuration overrides"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-7.3.2" -Section $section -Title "Ensure port-level configuration overrides are disabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-7.4.1: Ensure network isolation is properly configured
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithMultipleNetworks = @()
+        foreach ($host in $esxiHosts) {
+            $vmkernelPorts = Get-VMHostNetworkAdapter -VMHost $host -VMKernel
+            $managementPorts = $vmkernelPorts | Where-Object { $_.ManagementTrafficEnabled -eq $true }
+            $vMotionPorts = $vmkernelPorts | Where-Object { $_.VMotionEnabled -eq $true }
+            if ($managementPorts.Count -gt 0 -and $vMotionPorts.Count -gt 0) {
+                $sameNetwork = $false
+                foreach ($mgmt in $managementPorts) {
+                    foreach ($vmotion in $vMotionPorts) {
+                        if ($mgmt.PortGroupName -eq $vmotion.PortGroupName) {
+                            $sameNetwork = $true
+                            break
+                        }
+                    }
+                    if ($sameNetwork) { break }
+                }
+                if ($sameNetwork) {
+                    $hostsWithMultipleNetworks += "$($host.Name):Mixed traffic"
+                }
+            }
+        }
+        if ($hostsWithMultipleNetworks.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.4.1" -Section $section -Title "Ensure network isolation is properly configured" -Status "PASS" -Details "Network traffic properly isolated"
+        } else {
+            Add-CISResult -ControlID "CIS-7.4.1" -Section $section -Title "Ensure network isolation is properly configured" -Status "REVIEW" -Details "Mixed traffic: $($hostsWithMultipleNetworks -join ', ')" -Recommendation "Separate management and vMotion traffic"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-7.4.1" -Section $section -Title "Ensure network isolation is properly configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-7.4.2: Ensure network redundancy is configured
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithoutRedundancy = @()
+        foreach ($host in $esxiHosts) {
+            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard
+            foreach ($vSwitch in $vSwitches) {
+                $nics = $vSwitch.Nic
+                if ($nics.Count -lt 2) {
+                    $hostsWithoutRedundancy += "$($host.Name):$($vSwitch.Name):$($nics.Count) NIC(s)"
+                }
+            }
+        }
+        if ($hostsWithoutRedundancy.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.4.2" -Section $section -Title "Ensure network redundancy is configured" -Status "PASS" -Details "Network redundancy properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-7.4.2" -Section $section -Title "Ensure network redundancy is configured" -Status "REVIEW" -Details "Single NIC switches: $($hostsWithoutRedundancy -join ', ')" -Recommendation "Configure multiple NICs for network redundancy"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-7.4.2" -Section $section -Title "Ensure network redundancy is configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-7.5.1: Ensure network security policies are applied consistently
+    try {
+        $esxiHosts = Get-VMHost
+        $inconsistentPolicies = @()
+        $baselinePolicy = $null
+        foreach ($host in $esxiHosts) {
+            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard
+            foreach ($vSwitch in $vSwitches) {
+                $secPolicy = Get-SecurityPolicy -VirtualSwitch $vSwitch
+                $policyString = "$($secPolicy.AllowPromiscuous):$($secPolicy.ForgedTransmits):$($secPolicy.MacChanges)"
+                if (-not $baselinePolicy) {
+                    $baselinePolicy = $policyString
+                } elseif ($baselinePolicy -ne $policyString) {
+                    $inconsistentPolicies += "$($host.Name):$($vSwitch.Name):$policyString"
+                }
+            }
+        }
+        if ($inconsistentPolicies.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.5.1" -Section $section -Title "Ensure network security policies are applied consistently" -Status "PASS" -Details "Network security policies consistent across all switches"
+        } else {
+            Add-CISResult -ControlID "CIS-7.5.1" -Section $section -Title "Ensure network security policies are applied consistently" -Status "REVIEW" -Details "Inconsistent policies: $($inconsistentPolicies -join ', ')" -Recommendation "Apply consistent security policies across all switches"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-7.5.1" -Section $section -Title "Ensure network security policies are applied consistently" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
@@ -706,34 +1811,441 @@ function Test-Section8-Controls {
         Add-CISResult -ControlID "CIS-8.3.1" -Section $section -Title "Ensure unnecessary floppy devices are removed" -Status "ERROR" -Details $_.Exception.Message
     }
     
-    # Additional VM controls (22 more controls)
-    $additionalControls = @(
-        @{ID="CIS-8.1.2"; Title="Ensure VM tools are up to date"},
-        @{ID="CIS-8.2.2"; Title="Ensure VM console copy operations are disabled"},
-        @{ID="CIS-8.2.3"; Title="Ensure VM console drag and drop operations are disabled"},
-        @{ID="CIS-8.2.4"; Title="Ensure VM console paste operations are disabled"},
-        @{ID="CIS-8.2.5"; Title="Ensure VM console GUI options are disabled"},
-        @{ID="CIS-8.3.2"; Title="Ensure unnecessary CD/DVD devices are disconnected"},
-        @{ID="CIS-8.3.3"; Title="Ensure unnecessary parallel ports are disconnected"},
-        @{ID="CIS-8.3.4"; Title="Ensure unnecessary serial ports are disabled"},
-        @{ID="CIS-8.3.5"; Title="Ensure unnecessary USB devices are disconnected"},
-        @{ID="CIS-8.4.1"; Title="Ensure unauthorized modification of devices is disabled"},
-        @{ID="CIS-8.4.2"; Title="Ensure unauthorized connection of devices is disabled"},
-        @{ID="CIS-8.4.3"; Title="Ensure PCI and PCIe device passthrough is disabled"},
-        @{ID="CIS-8.5.1"; Title="Ensure VM limits are configured correctly"},
-        @{ID="CIS-8.5.2"; Title="Ensure hardware-based 3D acceleration is disabled"},
-        @{ID="CIS-8.5.3"; Title="Ensure non-persistent disks are limited"},
-        @{ID="CIS-8.6.1"; Title="Ensure virtual disk shrinking is disabled"},
-        @{ID="CIS-8.6.2"; Title="Ensure virtual disk wiping is disabled"},
-        @{ID="CIS-8.7.1"; Title="Ensure VM log file number is configured properly"},
-        @{ID="CIS-8.7.2"; Title="Ensure VM log file size is limited"},
-        @{ID="CIS-8.8.1"; Title="Ensure host information is not sent to guests"},
-        @{ID="CIS-8.8.2"; Title="Ensure VM isolation features are configured"},
-        @{ID="CIS-8.9.1"; Title="Ensure VM encryption is enabled where required"}
-    )
+    # CIS-8.1.2: Ensure VM tools are up to date
+    try {
+        $vms = Get-VM
+        $vmsWithOldTools = @()
+        foreach ($vm in $vms) {
+            if ($vm.ExtensionData.Guest.ToolsStatus -eq "toolsOld") {
+                $vmsWithOldTools += "$($vm.Name):$($vm.ExtensionData.Guest.ToolsVersion)"
+            }
+        }
+        if ($vmsWithOldTools.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.1.2" -Section $section -Title "Ensure VM tools are up to date" -Status "PASS" -Details "All VM tools are current"
+        } else {
+            Add-CISResult -ControlID "CIS-8.1.2" -Section $section -Title "Ensure VM tools are up to date" -Status "REVIEW" -Details "Old tools: $($vmsWithOldTools -join ', ')" -Recommendation "Update VMware Tools on all VMs"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.1.2" -Section $section -Title "Ensure VM tools are up to date" -Status "ERROR" -Details $_.Exception.Message
+    }
     
-    foreach ($control in $additionalControls) {
-        Add-CISResult -ControlID $control.ID -Section $section -Title $control.Title -Status "REVIEW" -Details "Manual verification required" -Recommendation "Verify configuration manually"
+    # CIS-8.2.2: Ensure VM console copy operations are disabled
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        foreach ($vm in $vms) {
+            $copyDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.copy.disable" -ErrorAction SilentlyContinue
+            if (-not $copyDisabled -or $copyDisabled.Value -ne "true") {
+                $nonCompliantVMs += $vm.Name
+            }
+        }
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.2.2" -Section $section -Title "Ensure VM console copy operations are disabled" -Status "PASS" -Details "Copy operations disabled on all VMs"
+        } else {
+            Add-CISResult -ControlID "CIS-8.2.2" -Section $section -Title "Ensure VM console copy operations are disabled" -Status "FAIL" -Details "Copy enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable console copy operations"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.2.2" -Section $section -Title "Ensure VM console copy operations are disabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.2.3: Ensure VM console drag and drop operations are disabled
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        foreach ($vm in $vms) {
+            $dragDropDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.dnd.disable" -ErrorAction SilentlyContinue
+            if (-not $dragDropDisabled -or $dragDropDisabled.Value -ne "true") {
+                $nonCompliantVMs += $vm.Name
+            }
+        }
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.2.3" -Section $section -Title "Ensure VM console drag and drop operations are disabled" -Status "PASS" -Details "Drag and drop disabled on all VMs"
+        } else {
+            Add-CISResult -ControlID "CIS-8.2.3" -Section $section -Title "Ensure VM console drag and drop operations are disabled" -Status "FAIL" -Details "Drag/drop enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable console drag and drop operations"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.2.3" -Section $section -Title "Ensure VM console drag and drop operations are disabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.2.4: Ensure VM console paste operations are disabled
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        foreach ($vm in $vms) {
+            $pasteDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.paste.disable" -ErrorAction SilentlyContinue
+            if (-not $pasteDisabled -or $pasteDisabled.Value -ne "true") {
+                $nonCompliantVMs += $vm.Name
+            }
+        }
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.2.4" -Section $section -Title "Ensure VM console paste operations are disabled" -Status "PASS" -Details "Paste operations disabled on all VMs"
+        } else {
+            Add-CISResult -ControlID "CIS-8.2.4" -Section $section -Title "Ensure VM console paste operations are disabled" -Status "FAIL" -Details "Paste enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable console paste operations"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.2.4" -Section $section -Title "Ensure VM console paste operations are disabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.2.5: Ensure VM console GUI options are disabled
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        foreach ($vm in $vms) {
+            $guiDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.setGUIOptions.enable" -ErrorAction SilentlyContinue
+            if ($guiDisabled -and $guiDisabled.Value -eq "true") {
+                $nonCompliantVMs += $vm.Name
+            }
+        }
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.2.5" -Section $section -Title "Ensure VM console GUI options are disabled" -Status "PASS" -Details "GUI options properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-8.2.5" -Section $section -Title "Ensure VM console GUI options are disabled" -Status "FAIL" -Details "GUI options enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable console GUI options"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.2.5" -Section $section -Title "Ensure VM console GUI options are disabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.3.2: Ensure unnecessary CD/DVD devices are disconnected
+    try {
+        $vms = Get-VM
+        $vmsWithConnectedCD = @()
+        foreach ($vm in $vms) {
+            $cdDrives = Get-CDDrive -VM $vm
+            $connectedCDs = $cdDrives | Where-Object { $_.ConnectionState.Connected -eq $true }
+            if ($connectedCDs.Count -gt 0) {
+                $vmsWithConnectedCD += "$($vm.Name):$($connectedCDs.Count) connected"
+            }
+        }
+        if ($vmsWithConnectedCD.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.3.2" -Section $section -Title "Ensure unnecessary CD/DVD devices are disconnected" -Status "PASS" -Details "No connected CD/DVD devices"
+        } else {
+            Add-CISResult -ControlID "CIS-8.3.2" -Section $section -Title "Ensure unnecessary CD/DVD devices are disconnected" -Status "FAIL" -Details "Connected CD/DVD: $($vmsWithConnectedCD -join ', ')" -Recommendation "Disconnect unnecessary CD/DVD devices"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.3.2" -Section $section -Title "Ensure unnecessary CD/DVD devices are disconnected" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.3.3: Ensure unnecessary parallel ports are disconnected
+    try {
+        $vms = Get-VM
+        $vmsWithParallel = @()
+        foreach ($vm in $vms) {
+            $parallelPorts = $vm.ExtensionData.Config.Hardware.Device | Where-Object { $_ -is [VMware.Vim.VirtualParallelPort] }
+            if ($parallelPorts) {
+                $vmsWithParallel += "$($vm.Name):$($parallelPorts.Count) parallel ports"
+            }
+        }
+        if ($vmsWithParallel.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.3.3" -Section $section -Title "Ensure unnecessary parallel ports are disconnected" -Status "PASS" -Details "No parallel ports found"
+        } else {
+            Add-CISResult -ControlID "CIS-8.3.3" -Section $section -Title "Ensure unnecessary parallel ports are disconnected" -Status "FAIL" -Details "Parallel ports: $($vmsWithParallel -join ', ')" -Recommendation "Remove unnecessary parallel ports"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.3.3" -Section $section -Title "Ensure unnecessary parallel ports are disconnected" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.3.4: Ensure unnecessary serial ports are disabled
+    try {
+        $vms = Get-VM
+        $vmsWithSerial = @()
+        foreach ($vm in $vms) {
+            $serialPorts = $vm.ExtensionData.Config.Hardware.Device | Where-Object { $_ -is [VMware.Vim.VirtualSerialPort] }
+            if ($serialPorts) {
+                $vmsWithSerial += "$($vm.Name):$($serialPorts.Count) serial ports"
+            }
+        }
+        if ($vmsWithSerial.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.3.4" -Section $section -Title "Ensure unnecessary serial ports are disabled" -Status "PASS" -Details "No serial ports found"
+        } else {
+            Add-CISResult -ControlID "CIS-8.3.4" -Section $section -Title "Ensure unnecessary serial ports are disabled" -Status "REVIEW" -Details "Serial ports: $($vmsWithSerial -join ', ')" -Recommendation "Review and disable unnecessary serial ports"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.3.4" -Section $section -Title "Ensure unnecessary serial ports are disabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.3.5: Ensure unnecessary USB devices are disconnected
+    try {
+        $vms = Get-VM
+        $vmsWithUSB = @()
+        foreach ($vm in $vms) {
+            $usbDevices = $vm.ExtensionData.Config.Hardware.Device | Where-Object { $_ -is [VMware.Vim.VirtualUSBController] }
+            if ($usbDevices) {
+                $vmsWithUSB += "$($vm.Name):$($usbDevices.Count) USB controllers"
+            }
+        }
+        if ($vmsWithUSB.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.3.5" -Section $section -Title "Ensure unnecessary USB devices are disconnected" -Status "PASS" -Details "No USB controllers found"
+        } else {
+            Add-CISResult -ControlID "CIS-8.3.5" -Section $section -Title "Ensure unnecessary USB devices are disconnected" -Status "REVIEW" -Details "USB controllers: $($vmsWithUSB -join ', ')" -Recommendation "Review and remove unnecessary USB devices"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.3.5" -Section $section -Title "Ensure unnecessary USB devices are disconnected" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.4.1: Ensure unauthorized modification of devices is disabled
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        foreach ($vm in $vms) {
+            $deviceModDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.device.edit.disable" -ErrorAction SilentlyContinue
+            if (-not $deviceModDisabled -or $deviceModDisabled.Value -ne "true") {
+                $nonCompliantVMs += $vm.Name
+            }
+        }
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.4.1" -Section $section -Title "Ensure unauthorized modification of devices is disabled" -Status "PASS" -Details "Device modification disabled on all VMs"
+        } else {
+            Add-CISResult -ControlID "CIS-8.4.1" -Section $section -Title "Ensure unauthorized modification of devices is disabled" -Status "FAIL" -Details "Device mod enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable device modification"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.4.1" -Section $section -Title "Ensure unauthorized modification of devices is disabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.4.2: Ensure unauthorized connection of devices is disabled
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        foreach ($vm in $vms) {
+            $deviceConnDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.device.connectable.disable" -ErrorAction SilentlyContinue
+            if (-not $deviceConnDisabled -or $deviceConnDisabled.Value -ne "true") {
+                $nonCompliantVMs += $vm.Name
+            }
+        }
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.4.2" -Section $section -Title "Ensure unauthorized connection of devices is disabled" -Status "PASS" -Details "Device connection disabled on all VMs"
+        } else {
+            Add-CISResult -ControlID "CIS-8.4.2" -Section $section -Title "Ensure unauthorized connection of devices is disabled" -Status "FAIL" -Details "Device conn enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable device connection"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.4.2" -Section $section -Title "Ensure unauthorized connection of devices is disabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.4.3: Ensure PCI and PCIe device passthrough is disabled
+    try {
+        $vms = Get-VM
+        $vmsWithPassthrough = @()
+        foreach ($vm in $vms) {
+            $pciDevices = $vm.ExtensionData.Config.Hardware.Device | Where-Object { $_ -is [VMware.Vim.VirtualPCIPassthrough] }
+            if ($pciDevices) {
+                $vmsWithPassthrough += "$($vm.Name):$($pciDevices.Count) PCI devices"
+            }
+        }
+        if ($vmsWithPassthrough.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.4.3" -Section $section -Title "Ensure PCI and PCIe device passthrough is disabled" -Status "PASS" -Details "No PCI passthrough devices found"
+        } else {
+            Add-CISResult -ControlID "CIS-8.4.3" -Section $section -Title "Ensure PCI and PCIe device passthrough is disabled" -Status "REVIEW" -Details "PCI passthrough: $($vmsWithPassthrough -join ', ')" -Recommendation "Review PCI passthrough necessity"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.4.3" -Section $section -Title "Ensure PCI and PCIe device passthrough is disabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.5.1: Ensure VM limits are configured correctly
+    try {
+        $vms = Get-VM
+        $vmsWithoutLimits = @()
+        foreach ($vm in $vms) {
+            $cpuLimit = $vm.ExtensionData.Config.CpuAllocation.Limit
+            $memLimit = $vm.ExtensionData.Config.MemoryAllocation.Limit
+            if ($cpuLimit -eq -1 -and $memLimit -eq -1) {
+                $vmsWithoutLimits += $vm.Name
+            }
+        }
+        if ($vmsWithoutLimits.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.5.1" -Section $section -Title "Ensure VM limits are configured correctly" -Status "PASS" -Details "Resource limits configured on all VMs"
+        } else {
+            Add-CISResult -ControlID "CIS-8.5.1" -Section $section -Title "Ensure VM limits are configured correctly" -Status "REVIEW" -Details "No limits on: $($vmsWithoutLimits -join ', ')" -Recommendation "Consider configuring resource limits"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.5.1" -Section $section -Title "Ensure VM limits are configured correctly" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.5.2: Ensure hardware-based 3D acceleration is disabled
+    try {
+        $vms = Get-VM
+        $vmsWith3D = @()
+        foreach ($vm in $vms) {
+            $video3D = $vm.ExtensionData.Config.Hardware.Device | Where-Object { $_ -is [VMware.Vim.VirtualMachineVideoCard] -and $_.Enable3DSupport -eq $true }
+            if ($video3D) {
+                $vmsWith3D += $vm.Name
+            }
+        }
+        if ($vmsWith3D.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.5.2" -Section $section -Title "Ensure hardware-based 3D acceleration is disabled" -Status "PASS" -Details "3D acceleration disabled on all VMs"
+        } else {
+            Add-CISResult -ControlID "CIS-8.5.2" -Section $section -Title "Ensure hardware-based 3D acceleration is disabled" -Status "REVIEW" -Details "3D enabled on: $($vmsWith3D -join ', ')" -Recommendation "Disable 3D acceleration unless required"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.5.2" -Section $section -Title "Ensure hardware-based 3D acceleration is disabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.5.3: Ensure non-persistent disks are limited
+    try {
+        $vms = Get-VM
+        $vmsWithNonPersistent = @()
+        foreach ($vm in $vms) {
+            $disks = Get-HardDisk -VM $vm
+            $nonPersistentDisks = $disks | Where-Object { $_.Persistence -eq "NonPersistent" }
+            if ($nonPersistentDisks.Count -gt 0) {
+                $vmsWithNonPersistent += "$($vm.Name):$($nonPersistentDisks.Count) non-persistent"
+            }
+        }
+        if ($vmsWithNonPersistent.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.5.3" -Section $section -Title "Ensure non-persistent disks are limited" -Status "PASS" -Details "No non-persistent disks found"
+        } else {
+            Add-CISResult -ControlID "CIS-8.5.3" -Section $section -Title "Ensure non-persistent disks are limited" -Status "REVIEW" -Details "Non-persistent disks: $($vmsWithNonPersistent -join ', ')" -Recommendation "Review non-persistent disk usage"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.5.3" -Section $section -Title "Ensure non-persistent disks are limited" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.6.1: Ensure virtual disk shrinking is disabled
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        foreach ($vm in $vms) {
+            $shrinkDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.diskShrink.disable" -ErrorAction SilentlyContinue
+            if (-not $shrinkDisabled -or $shrinkDisabled.Value -ne "true") {
+                $nonCompliantVMs += $vm.Name
+            }
+        }
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.6.1" -Section $section -Title "Ensure virtual disk shrinking is disabled" -Status "PASS" -Details "Disk shrinking disabled on all VMs"
+        } else {
+            Add-CISResult -ControlID "CIS-8.6.1" -Section $section -Title "Ensure virtual disk shrinking is disabled" -Status "FAIL" -Details "Shrinking enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable virtual disk shrinking"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.6.1" -Section $section -Title "Ensure virtual disk shrinking is disabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.6.2: Ensure virtual disk wiping is disabled
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        foreach ($vm in $vms) {
+            $wipeDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.diskWiper.disable" -ErrorAction SilentlyContinue
+            if (-not $wipeDisabled -or $wipeDisabled.Value -ne "true") {
+                $nonCompliantVMs += $vm.Name
+            }
+        }
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.6.2" -Section $section -Title "Ensure virtual disk wiping is disabled" -Status "PASS" -Details "Disk wiping disabled on all VMs"
+        } else {
+            Add-CISResult -ControlID "CIS-8.6.2" -Section $section -Title "Ensure virtual disk wiping is disabled" -Status "FAIL" -Details "Wiping enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable virtual disk wiping"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.6.2" -Section $section -Title "Ensure virtual disk wiping is disabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.7.1: Ensure VM log file number is configured properly
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        foreach ($vm in $vms) {
+            $logKeepOld = Get-AdvancedSetting -Entity $vm -Name "log.keepOld" -ErrorAction SilentlyContinue
+            if (-not $logKeepOld -or [int]$logKeepOld.Value -gt 10) {
+                $nonCompliantVMs += "$($vm.Name):$($logKeepOld.Value)"
+            }
+        }
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.7.1" -Section $section -Title "Ensure VM log file number is configured properly" -Status "PASS" -Details "Log file numbers properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-8.7.1" -Section $section -Title "Ensure VM log file number is configured properly" -Status "FAIL" -Details "High log count: $($nonCompliantVMs -join ', ')" -Recommendation "Set log.keepOld to 10 or less"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.7.1" -Section $section -Title "Ensure VM log file number is configured properly" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.7.2: Ensure VM log file size is limited
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        foreach ($vm in $vms) {
+            $logRotateSize = Get-AdvancedSetting -Entity $vm -Name "log.rotateSize" -ErrorAction SilentlyContinue
+            if (-not $logRotateSize -or [int]$logRotateSize.Value -gt 1024000) {
+                $nonCompliantVMs += "$($vm.Name):$($logRotateSize.Value)"
+            }
+        }
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.7.2" -Section $section -Title "Ensure VM log file size is limited" -Status "PASS" -Details "Log file sizes properly limited"
+        } else {
+            Add-CISResult -ControlID "CIS-8.7.2" -Section $section -Title "Ensure VM log file size is limited" -Status "FAIL" -Details "Large log size: $($nonCompliantVMs -join ', ')" -Recommendation "Set log.rotateSize to 1024000 or less"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.7.2" -Section $section -Title "Ensure VM log file size is limited" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.8.1: Ensure host information is not sent to guests
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        foreach ($vm in $vms) {
+            $hostInfoDisabled = Get-AdvancedSetting -Entity $vm -Name "tools.guestlib.enableHostInfo" -ErrorAction SilentlyContinue
+            if ($hostInfoDisabled -and $hostInfoDisabled.Value -eq "true") {
+                $nonCompliantVMs += $vm.Name
+            }
+        }
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.8.1" -Section $section -Title "Ensure host information is not sent to guests" -Status "PASS" -Details "Host information sharing disabled"
+        } else {
+            Add-CISResult -ControlID "CIS-8.8.1" -Section $section -Title "Ensure host information is not sent to guests" -Status "FAIL" -Details "Host info enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable host information sharing"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.8.1" -Section $section -Title "Ensure host information is not sent to guests" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.8.2: Ensure VM isolation features are configured
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        foreach ($vm in $vms) {
+            $isolationSettings = @(
+                "isolation.tools.unity.disable",
+                "isolation.tools.unityInterlockOperation.disable",
+                "isolation.tools.unity.taskbar.disable",
+                "isolation.tools.unityActive.disable"
+            )
+            $missingSettings = @()
+            foreach ($setting in $isolationSettings) {
+                $advSetting = Get-AdvancedSetting -Entity $vm -Name $setting -ErrorAction SilentlyContinue
+                if (-not $advSetting -or $advSetting.Value -ne "true") {
+                    $missingSettings += $setting
+                }
+            }
+            if ($missingSettings.Count -gt 0) {
+                $nonCompliantVMs += "$($vm.Name):$($missingSettings.Count) missing"
+            }
+        }
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.8.2" -Section $section -Title "Ensure VM isolation features are configured" -Status "PASS" -Details "VM isolation properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-8.8.2" -Section $section -Title "Ensure VM isolation features are configured" -Status "FAIL" -Details "Isolation issues: $($nonCompliantVMs -join ', ')" -Recommendation "Configure VM isolation settings"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.8.2" -Section $section -Title "Ensure VM isolation features are configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.9.1: Ensure VM encryption is enabled where required
+    try {
+        $vms = Get-VM
+        $encryptedVMs = @()
+        $unencryptedVMs = @()
+        foreach ($vm in $vms) {
+            $vmConfig = $vm.ExtensionData.Config
+            if ($vmConfig.KeyId) {
+                $encryptedVMs += $vm.Name
+            } else {
+                $unencryptedVMs += $vm.Name
+            }
+        }
+        if ($encryptedVMs.Count -eq $vms.Count) {
+            Add-CISResult -ControlID "CIS-8.9.1" -Section $section -Title "Ensure VM encryption is enabled where required" -Status "PASS" -Details "All VMs are encrypted"
+        } elseif ($encryptedVMs.Count -gt 0) {
+            Add-CISResult -ControlID "CIS-8.9.1" -Section $section -Title "Ensure VM encryption is enabled where required" -Status "REVIEW" -Details "$($encryptedVMs.Count)/$($vms.Count) VMs encrypted" -Recommendation "Consider enabling encryption for sensitive VMs"
+        } else {
+            Add-CISResult -ControlID "CIS-8.9.1" -Section $section -Title "Ensure VM encryption is enabled where required" -Status "INFO" -Details "No VM encryption detected" -Recommendation "Enable VM encryption for sensitive workloads"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-8.9.1" -Section $section -Title "Ensure VM encryption is enabled where required" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
