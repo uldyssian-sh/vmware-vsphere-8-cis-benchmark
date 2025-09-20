@@ -199,6 +199,7 @@ Current version: 2.0.0
 
 ## 📚 References
 
+- [CIS VMware vSphere 8 Benchmark PDF](https://learn.cisecurity.org/l/799323/2025-03-20/4v7qc6?_gl=1*1mrhnug*_gcl_au*MTEwNDkxOTMzNi4xNzU4Mzk4ODAx) - Official CIS Benchmark Document
 - [CIS VMware vSphere 8 Benchmark](https://www.cisecurity.org/benchmark/vmware)
 - [VMware vSphere 8 Documentation](https://docs.vmware.com/en/VMware-vSphere/8.0/)
 - [VMware Security Hardening Guides](https://core.vmware.com/security)
