@@ -18,7 +18,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       
     - name: Setup PowerShell
       uses: actions/setup-powershell@v1
@@ -54,7 +54,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
@@ -76,7 +76,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       
     - name: Check README links
       uses: gaurav-nelson/github-action-markdown-link-check@v1
@@ -122,7 +122,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       
     - name: Check version consistency
       run: |
