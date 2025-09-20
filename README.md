@@ -69,14 +69,14 @@ The script implements comprehensive coverage across all CIS Benchmark security d
 ```
 vmware-vsphere-8-cis-benchmark/
 ├── scripts/
-│   └── Invoke-vSphere8CISAudit.ps1    # Main audit script (2.0.0)
-├── reports/                            # Generated reports directory
-├── docs/                              # Documentation
-│   └── installation.md               # Installation guide
+│   └── Invoke-vSphere8CISAudit.ps1     # Main audit script (3.0.0)
+├── reports/                             # Generated reports directory
+├── docs/                                # Documentation
+│   └── installation.md                 # Installation guide
 ├── .github/
-│   ├── workflows/                    # CI/CD pipelines
-│   └── dependabot.yml              # Dependency management
-└── README.md                        # This file
+│   ├── workflows/                       # CI/CD pipelines
+│   └── dependabot.yml                  # Dependency management
+└── README.md                            # This file
 ```
 
 ## Sample Output
