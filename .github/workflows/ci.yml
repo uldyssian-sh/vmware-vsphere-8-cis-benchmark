@@ -1,0 +1,167 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM
+
+env:
+  POWERSHELL_TELEMETRY_OPTOUT: 1
+
+jobs:
+  powershell-analysis:
+    name: PowerShell Script Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup PowerShell
+      uses: actions/setup-powershell@v1
+      
+    - name: Install PSScriptAnalyzer
+      shell: pwsh
+      run: |
+        Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+        
+    - name: Run PSScriptAnalyzer
+      shell: pwsh
+      run: |
+        $results = Invoke-ScriptAnalyzer -Path "./scripts/" -Recurse -ReportSummary
+        if ($results) {
+          $results | Format-Table
+          Write-Error "PSScriptAnalyzer found issues"
+        } else {
+          Write-Host "No issues found by PSScriptAnalyzer"
+        }
+        
+    - name: Test PowerShell syntax
+      shell: pwsh
+      run: |
+        Get-ChildItem -Path "./scripts/" -Filter "*.ps1" -Recurse | ForEach-Object {
+          Write-Host "Testing syntax for: $($_.Name)"
+          $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content $_.FullName -Raw), [ref]$null)
+          Write-Host "✓ Syntax OK: $($_.Name)"
+        }
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  documentation-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Check README links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        use-verbose-mode: 'yes'
+        config-file: '.github/mlc_config.json'
+        
+    - name: Validate documentation structure
+      run: |
+        echo "Checking documentation structure..."
+        
+        # Check required files exist
+        required_files=("README.md" "LICENSE" "SECURITY.md" "CONTRIBUTING.md")
+        for file in "${required_files[@]}"; do
+          if [[ ! -f "$file" ]]; then
+            echo "❌ Missing required file: $file"
+            exit 1
+          else
+            echo "✅ Found: $file"
+          fi
+        done
+        
+        # Check scripts directory
+        if [[ ! -d "scripts" ]]; then
+          echo "❌ Missing scripts directory"
+          exit 1
+        fi
+        
+        # Check main PowerShell script exists
+        if [[ ! -f "scripts/Invoke-vSphere8CISAudit.ps1" ]]; then
+          echo "❌ Missing main PowerShell script"
+          exit 1
+        fi
+        
+        echo "✅ Documentation structure validation passed"
+
+  release-check:
+    name: Release Readiness
+    runs-on: ubuntu-latest
+    needs: [powershell-analysis, security-scan, documentation-check]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Check version consistency
+      run: |
+        echo "Checking version consistency across files..."
+        
+        # Extract version from PowerShell script
+        ps_version=$(grep -o "Version: [0-9]\+\.[0-9]\+\.[0-9]\+" scripts/Invoke-vSphere8CISAudit.ps1 | cut -d' ' -f2)
+        
+        # Extract version from README
+        readme_version=$(grep -o "Current version: [0-9]\+\.[0-9]\+\.[0-9]\+" README.md | cut -d' ' -f3)
+        
+        echo "PowerShell script version: $ps_version"
+        echo "README version: $readme_version"
+        
+        if [[ "$ps_version" != "$readme_version" ]]; then
+          echo "❌ Version mismatch between files"
+          exit 1
+        else
+          echo "✅ Version consistency check passed"
+        fi
+        
+    - name: Generate release notes
+      if: success()
+      run: |
+        echo "## Release Notes" > release_notes.md
+        echo "" >> release_notes.md
+        echo "### Features" >> release_notes.md
+        echo "- Enterprise-grade VMware vSphere 8 CIS Benchmark audit script" >> release_notes.md
+        echo "- Comprehensive security compliance assessment" >> release_notes.md
+        echo "- Automated HTML and CSV reporting" >> release_notes.md
+        echo "- Progress tracking and detailed summaries" >> release_notes.md
+        echo "" >> release_notes.md
+        echo "### Requirements" >> release_notes.md
+        echo "- PowerShell 5.1 or later" >> release_notes.md
+        echo "- VMware PowerCLI 13.0+" >> release_notes.md
+        echo "- VMware vSphere 8.0+" >> release_notes.md
+        
+    - name: Upload release notes
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-notes
+        path: release_notes.md

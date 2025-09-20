@@ -1,0 +1,89 @@
+# PowerShell
+*.ps1xml
+*.psd1
+*.psm1~
+*.tmp
+
+# Reports and Logs
+reports/*.html
+reports/*.csv
+reports/*.json
+reports/*.xml
+logs/
+*.log
+
+# Credentials and Secrets
+*.credential
+*.cred
+credentials.xml
+secrets/
+.env
+.env.local
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE Files
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary Files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Build Artifacts
+build/
+dist/
+out/
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if any)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Test Results
+TestResults/
+coverage/
+*.trx
+*.coverage
+
+# Documentation Build
+docs/_build/
+site/
+
+# Backup Files
+*.bak
+*.backup
+*.old
+
+# Archive Files
+*.zip
+*.tar.gz
+*.rar
+
+# Keep directory structure but ignore contents
+reports/.gitkeep
+!reports/.gitkeep
