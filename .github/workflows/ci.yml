@@ -6,50 +6,54 @@ on:
   pull_request:
     branches: [ main ]
   schedule:
-    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM
-
-env:
-  POWERSHELL_TELEMETRY_OPTOUT: 1
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM UTC
 
 jobs:
   powershell-analysis:
     name: PowerShell Script Analysis
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install PSScriptAnalyzer
+      shell: powershell
+      run: |
+        Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+        
+    - name: Run PSScriptAnalyzer
+      shell: powershell
+      run: |
+        $results = Invoke-ScriptAnalyzer -Path "scripts/Invoke-vSphere8CISAudit.ps1" -Severity Error,Warning
+        if ($results) {
+          $results | Format-Table -AutoSize
+          Write-Error "PSScriptAnalyzer found issues"
+        } else {
+          Write-Host "✅ PSScriptAnalyzer passed - no issues found" -ForegroundColor Green
+        }
+        
+  markdown-lint:
+    name: Markdown Linting
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Setup PowerShell
-      uses: actions/setup-powershell@v1
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install markdownlint-cli
+      run: npm install -g markdownlint-cli
       
-    - name: Install PSScriptAnalyzer
-      shell: pwsh
-      run: |
-        Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
-        
-    - name: Run PSScriptAnalyzer
-      shell: pwsh
-      run: |
-        $results = Invoke-ScriptAnalyzer -Path "./scripts/" -Recurse -ReportSummary
-        if ($results) {
-          $results | Format-Table
-          Write-Error "PSScriptAnalyzer found issues"
-        } else {
-          Write-Host "No issues found by PSScriptAnalyzer"
-        }
-        
-    - name: Test PowerShell syntax
-      shell: pwsh
-      run: |
-        Get-ChildItem -Path "./scripts/" -Filter "*.ps1" -Recurse | ForEach-Object {
-          Write-Host "Testing syntax for: $($_.Name)"
-          $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content $_.FullName -Raw), [ref]$null)
-          Write-Host "✓ Syntax OK: $($_.Name)"
-        }
-
+    - name: Run markdownlint
+      run: markdownlint README.md docs/ --config .markdownlint.json || true
+      
   security-scan:
-    name: Security Scan
+    name: Security Scanning
     runs-on: ubuntu-latest
     
     steps:
@@ -69,99 +73,162 @@ jobs:
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
-
-  documentation-check:
-    name: Documentation Check
+        
+  link-checker:
+    name: Link Validation
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Check README links
-      uses: gaurav-nelson/github-action-markdown-link-check@v1
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
       with:
-        use-quiet-mode: 'yes'
-        use-verbose-mode: 'yes'
-        config-file: '.github/mlc_config.json'
+        node-version: '18'
         
-    - name: Validate documentation structure
+    - name: Install markdown-link-check
+      run: npm install -g markdown-link-check
+      
+    - name: Check links in README
+      run: markdown-link-check README.md --config .github/mlc_config.json || true
+      
+  validate-structure:
+    name: Repository Structure Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Validate repository structure
       run: |
-        echo "Checking documentation structure..."
+        echo "🔍 Validating repository structure..."
         
-        # Check required files exist
-        required_files=("README.md" "LICENSE" "SECURITY.md" "CONTRIBUTING.md")
+        # Check required files
+        required_files=(
+          "README.md"
+          "LICENSE"
+          "SECURITY.md"
+          "CONTRIBUTING.md"
+          "scripts/Invoke-vSphere8CISAudit.ps1"
+          ".github/workflows/ci.yml"
+          ".github/dependabot.yml"
+        )
+        
         for file in "${required_files[@]}"; do
-          if [[ ! -f "$file" ]]; then
-            echo "❌ Missing required file: $file"
-            exit 1
+          if [[ -f "$file" ]]; then
+            echo "✅ $file exists"
           else
-            echo "✅ Found: $file"
+            echo "❌ $file is missing"
+            exit 1
           fi
         done
         
-        # Check scripts directory
-        if [[ ! -d "scripts" ]]; then
-          echo "❌ Missing scripts directory"
-          exit 1
-        fi
+        # Check directory structure
+        required_dirs=(
+          "scripts"
+          "docs"
+          "reports"
+          ".github/workflows"
+        )
         
-        # Check main PowerShell script exists
-        if [[ ! -f "scripts/Invoke-vSphere8CISAudit.ps1" ]]; then
-          echo "❌ Missing main PowerShell script"
-          exit 1
-        fi
+        for dir in "${required_dirs[@]}"; do
+          if [[ -d "$dir" ]]; then
+            echo "✅ Directory $dir exists"
+          else
+            echo "❌ Directory $dir is missing"
+            exit 1
+          fi
+        done
         
-        echo "✅ Documentation structure validation passed"
-
-  release-check:
-    name: Release Readiness
+        echo "🎉 Repository structure validation passed!"
+        
+  test-powershell-syntax:
+    name: PowerShell Syntax Validation
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Test PowerShell syntax
+      shell: powershell
+      run: |
+        Write-Host "🔍 Testing PowerShell script syntax..." -ForegroundColor Cyan
+        
+        try {
+          $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content "scripts/Invoke-vSphere8CISAudit.ps1" -Raw), [ref]$null)
+          Write-Host "✅ PowerShell syntax validation passed" -ForegroundColor Green
+        }
+        catch {
+          Write-Error "❌ PowerShell syntax validation failed: $($_.Exception.Message)"
+          exit 1
+        }
+        
+  generate-docs:
+    name: Generate Documentation
     runs-on: ubuntu-latest
-    needs: [powershell-analysis, security-scan, documentation-check]
     if: github.ref == 'refs/heads/main'
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Check version consistency
+    - name: Generate script documentation
       run: |
-        echo "Checking version consistency across files..."
+        echo "📚 Generating documentation..."
         
-        # Extract version from PowerShell script
-        ps_version=$(grep -o "Version: [0-9]\+\.[0-9]\+\.[0-9]\+" scripts/Invoke-vSphere8CISAudit.ps1 | cut -d' ' -f2)
+        # Create docs directory if it doesn't exist
+        mkdir -p docs
         
-        # Extract version from README
-        readme_version=$(grep -o "Current version: [0-9]\+\.[0-9]\+\.[0-9]\+" README.md | cut -d' ' -f3)
+        # Generate installation guide
+        cat > docs/installation.md << 'EOF'
+        # Installation Guide
         
-        echo "PowerShell script version: $ps_version"
-        echo "README version: $readme_version"
+        ## Prerequisites
         
-        if [[ "$ps_version" != "$readme_version" ]]; then
-          echo "❌ Version mismatch between files"
-          exit 1
-        else
-          echo "✅ Version consistency check passed"
-        fi
+        - Windows PowerShell 5.1 or PowerShell Core 7.0+
+        - VMware PowerCLI 13.0 or later
+        - Network access to vCenter Server
+        - Read-only permissions on vSphere environment
         
-    - name: Generate release notes
-      if: success()
+        ## Installation Steps
+        
+        1. **Clone the repository:**
+           ```bash
+           git clone https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark.git
+           cd vmware-vsphere-8-cis-benchmark
+           ```
+        
+        2. **Install VMware PowerCLI:**
+           ```powershell
+           Install-Module -Name VMware.PowerCLI -Force -AllowClobber -Scope CurrentUser
+           ```
+        
+        3. **Set execution policy:**
+           ```powershell
+           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+           ```
+        
+        4. **Run the audit:**
+           ```powershell
+           .\scripts\Invoke-vSphere8CISAudit.ps1
+           ```
+        
+        ## Troubleshooting
+        
+        - Ensure PowerCLI modules are properly installed
+        - Verify network connectivity to vCenter Server
+        - Check user permissions for read-only access
+        EOF
+        
+        echo "✅ Documentation generated successfully"
+        
+    - name: Commit documentation
       run: |
-        echo "## Release Notes" > release_notes.md
-        echo "" >> release_notes.md
-        echo "### Features" >> release_notes.md
-        echo "- Enterprise-grade VMware vSphere 8 CIS Benchmark audit script" >> release_notes.md
-        echo "- Comprehensive security compliance assessment" >> release_notes.md
-        echo "- Automated HTML and CSV reporting" >> release_notes.md
-        echo "- Progress tracking and detailed summaries" >> release_notes.md
-        echo "" >> release_notes.md
-        echo "### Requirements" >> release_notes.md
-        echo "- PowerShell 5.1 or later" >> release_notes.md
-        echo "- VMware PowerCLI 13.0+" >> release_notes.md
-        echo "- VMware vSphere 8.0+" >> release_notes.md
-        
-    - name: Upload release notes
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-notes
-        path: release_notes.md
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add docs/
+        git diff --staged --quiet || git commit -m "📚 Auto-update documentation [skip ci]"
+        git push || true

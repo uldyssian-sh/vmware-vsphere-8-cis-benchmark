@@ -1,2 +1,9 @@
-# This file ensures the reports directory is tracked by Git
-# Reports are generated dynamically and excluded by .gitignore
+# Reports Directory
+
+This directory contains generated CIS compliance reports.
+
+Generated files:
+- HTML reports: vSphere8-CIS-Audit-YYYYMMDD-HHMMSS.html
+- CSV data: vSphere8-CIS-Audit-YYYYMMDD-HHMMSS.csv
+
+Reports are automatically generated during audit execution.

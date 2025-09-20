@@ -13,9 +13,23 @@
       "pattern": "^https://127.0.0.1"
     }
   ],
-  "timeout": "20s",
+  "replacementPatterns": [
+    {
+      "pattern": "^/",
+      "replacement": "https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/blob/main/"
+    }
+  ],
+  "httpHeaders": [
+    {
+      "urls": ["https://github.com"],
+      "headers": {
+        "Accept": "text/html"
+      }
+    }
+  ],
+  "timeout": "10s",
   "retryOn429": true,
   "retryCount": 3,
   "fallbackRetryDelay": "30s",
-  "aliveStatusCodes": [200, 206]
+  "aliveStatusCodes": [200, 206, 999]
 }

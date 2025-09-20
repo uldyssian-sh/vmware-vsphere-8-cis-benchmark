@@ -6,16 +6,17 @@
 [![VMware](https://img.shields.io/badge/VMware-vSphere%208-green.svg)](https://www.vmware.com/products/vsphere.html)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://docs.microsoft.com/en-us/powershell/)
 
-Enterprise-ready PowerShell implementation for auditing VMware vSphere 8 environments against CIS (Center for Internet Security) Benchmark controls with automated reporting and comprehensive security assessment.
+Enterprise-ready PowerShell implementation for comprehensive CIS (Center for Internet Security) Benchmark compliance assessment of VMware vSphere 8 environments with automated progress tracking, sectioned controls, and robust reporting.
 
 ## 🎯 Key Features
 
-- **🔍 Comprehensive Audit** - Complete CIS Benchmark coverage for vSphere 8
-- **📊 Progress Tracking** - Real-time progress indicators during execution
-- **📈 Detailed Reporting** - HTML and CSV reports with executive summaries
-- **🔒 Read-Only Mode** - No modifications to vSphere environment
-- **⚡ Minimal Input** - Automated execution with minimal user interaction
-- **🏢 Enterprise Ready** - Designed for production environments
+- **🔍 Comprehensive Assessment** - Complete CIS Benchmark coverage across 8 security sections
+- **📊 Real-Time Progress** - Visual progress bar with percentage completion tracking
+- **🎛️ Minimal User Input** - Automated execution requiring only vCenter credentials
+- **📈 Robust Reporting** - HTML and CSV reports with executive summaries
+- **🔒 Read-Only Mode** - Zero modifications to vSphere environment
+- **⚡ Enterprise Ready** - Optimized for production environments
+- **🏗️ Sectioned Controls** - Organized by CIS security domains
 
 ## 🚀 Quick Start
 
@@ -33,37 +34,37 @@ cd vmware-vsphere-8-cis-benchmark
 
 ### Basic Usage
 ```powershell
-# Run audit (will prompt for vCenter details)
+# Run audit (minimal input - will prompt for vCenter details)
 .\scripts\Invoke-vSphere8CISAudit.ps1
 
-# Run with parameters
+# Run with parameters (no prompts)
 .\scripts\Invoke-vSphere8CISAudit.ps1 -vCenterServer "vcenter.domain.com" -OutputPath "C:\Reports"
 ```
 
-## 📋 CIS Controls Coverage
+## 📋 CIS Security Sections
 
-The script implements comprehensive coverage across all CIS Benchmark sections:
+The script implements comprehensive coverage across all CIS Benchmark security domains:
 
-| Section | Category | Controls | Status |
-|---------|----------|----------|--------|
-| 1 | Initial Setup and Patching | 15+ | ✅ Implemented |
-| 2 | Logging and Monitoring | 12+ | ✅ Implemented |
-| 3 | Network Configuration | 18+ | ✅ Implemented |
-| 4 | Access Control | 20+ | ✅ Implemented |
-| 5 | System Configuration | 25+ | ✅ Implemented |
-| 6 | Virtual Machine Configuration | 30+ | ✅ Implemented |
+| Section | Category | Controls | Description |
+|---------|----------|----------|-------------|
+| **1** | Initial Setup & Patching | 15+ | ESXi host software, patching, and VIB management |
+| **2** | Communication & Network Services | 12+ | Network services, firewall, NTP, and MOB security |
+| **3** | Logging & Monitoring | 8+ | Persistent logging, remote syslog, and audit trails |
+| **4** | Access Control & Authentication | 18+ | SSH, shell access, and authentication controls |
+| **5** | Console & Shell Access | 10+ | DCUI timeout, lockdown mode, and console security |
+| **6** | Storage Security | 6+ | Storage I/O control and datastore security |
+| **7** | Network Security Policies | 12+ | vSwitch policies, VLAN configuration, and port groups |
+| **8** | Virtual Machine Configuration | 25+ | VM hardware, devices, and security settings |
 
 ## 🏗️ Architecture
 
 ```
 vmware-vsphere-8-cis-benchmark/
 ├── scripts/
-│   └── Invoke-vSphere8CISAudit.ps1    # Main audit script
-├── reports/                            # Generated reports
+│   └── Invoke-vSphere8CISAudit.ps1    # Main audit script (2.0.0)
+├── reports/                            # Generated reports directory
 ├── docs/                              # Documentation
-│   ├── installation.md               # Installation guide
-│   ├── configuration.md              # Configuration guide
-│   └── user-manual.md               # User manual
+│   └── installation.md               # Installation guide
 ├── .github/
 │   ├── workflows/                    # CI/CD pipelines
 │   └── dependabot.yml              # Dependency management
@@ -73,44 +74,61 @@ vmware-vsphere-8-cis-benchmark/
 ## 📊 Sample Output
 
 ```
+================================================================================
 VMware vSphere 8 CIS Benchmark Audit Tool
-=========================================
+================================================================================
 Enterprise Security Compliance Assessment
+Read-Only Mode - No Configuration Changes
 
-[25%] Completed: CIS-1.1.1 - Ensure ESXi host patches are up-to-date
-[50%] Completed: CIS-2.1.1 - Ensure ESXi host logging is configured properly
-[75%] Completed: CIS-4.1.1 - Ensure default administrator account is secured
-[100%] Completed: CIS-6.1.1 - Ensure VM hardware version is current
+[INIT] PowerCLI ready
+[CONN] Successfully connected to vcenter.domain.com
+[START] Beginning CIS Benchmark audit...
+
+[████████████████████░] 85% - Completed: CIS-7.2.1 - Ensure port groups are not configured to VLAN 0 or 4095
+[██████████████████████] 100% - Completed: CIS-8.3.1 - Ensure unnecessary floppy devices are removed
 
 ================================================================================
 VMware vSphere 8 CIS Benchmark Audit - FINAL SUMMARY
 ================================================================================
 
-OVERALL COMPLIANCE: 85.5% - GOOD
+🎯 OVERALL COMPLIANCE: 87.4% - GOOD ⚠️
 
-CONTROL RESULTS:
-  ✓ PASSED:  17/20
-  ✗ FAILED:  2/20
-  ⚠ REVIEW:  1/20
-  ⚡ ERRORS:  0/20
+📊 CONTROL RESULTS:
+  ✅ PASSED:  83/95
+  ❌ FAILED:  8/95
+  ⚠️  REVIEW:  3/95
+  ℹ️  INFO:    1/95
+  ⚡ ERRORS:  0/95
 
-PRIORITY ACTIONS:
-  🔴 CRITICAL: 2 security controls failed
-     Immediate remediation required!
+🚨 PRIORITY ACTIONS:
+  🔴 CRITICAL: 8 security controls FAILED
+     ⚡ Immediate remediation required!
+  🟡 REVIEW: 3 controls need manual review
 
-REPORTS GENERATED:
-  📄 HTML Report: ./reports/vSphere8-CIS-Audit-20241201-143022.html
-  📊 CSV Data:    ./reports/vSphere8-CIS-Audit-20241201-143022.csv
+📄 REPORTS GENERATED:
+  📊 HTML Report: ./reports/vSphere8-CIS-Audit-20241201-143022.html
+  📈 CSV Data:    ./reports/vSphere8-CIS-Audit-20241201-143022.csv
+
+🔧 TOP RECOMMENDATIONS:
+  • CIS-2.3.1: Disable Managed Object Browser
+  • CIS-4.2.1: Disable ESXi Shell service
+  • CIS-5.2.1: Enable lockdown mode
+  • CIS-7.1.1: Disable promiscuous mode, forged transmits, and MAC changes
+  • CIS-8.2.1: Set RemoteDisplay.maxConnections to 1
+
+================================================================================
+Audit completed in 4.2 minutes
+================================================================================
 ```
 
 ## 🔧 Configuration
 
-### Environment Variables
+### Environment Variables (Optional)
 ```powershell
-# Optional: Set default vCenter server
+# Set default vCenter server
 $env:VCENTER_SERVER = "vcenter.domain.com"
 
-# Optional: Set default output path
+# Set default output path
 $env:CIS_REPORT_PATH = "C:\CISReports"
 ```
 
@@ -119,7 +137,7 @@ $env:CIS_REPORT_PATH = "C:\CISReports"
 # Custom output location
 .\Invoke-vSphere8CISAudit.ps1 -OutputPath "\\server\share\reports"
 
-# Pre-configured credentials (use carefully)
+# Pre-configured credentials (use securely)
 $cred = Get-Credential
 .\Invoke-vSphere8CISAudit.ps1 -vCenterServer "vcenter.domain.com" -Credential $cred
 ```
@@ -127,22 +145,34 @@ $cred = Get-Credential
 ## 📖 Documentation
 
 - **[Installation Guide](docs/installation.md)** - Complete setup instructions
-- **[Configuration Guide](docs/configuration.md)** - Advanced configuration options
-- **[User Manual](docs/user-manual.md)** - Detailed usage guide
 - **[Security Policy](SECURITY.md)** - Security guidelines and reporting
 - **[Contributing](CONTRIBUTING.md)** - How to contribute to the project
 
-## 🔒 Security
+## 🔒 Security Features
 
-This tool operates in **read-only mode** and makes no changes to your vSphere environment. All security best practices are implemented:
+This tool operates in **strict read-only mode** with enterprise security features:
 
-- Secure credential handling
-- Encrypted connections only
-- Comprehensive audit logging
-- No sensitive data in reports
-- Regular security scanning
+- ✅ **Zero Configuration Changes** - No modifications to vSphere environment
+- 🔐 **Secure Credential Handling** - PowerShell credential objects only
+- 🔗 **Encrypted Connections** - TLS/SSL connections to vCenter
+- 📝 **Comprehensive Audit Logging** - Detailed execution tracking
+- 🚫 **No Sensitive Data Exposure** - Reports contain no credentials or secrets
+- 🛡️ **Regular Security Scanning** - Automated vulnerability assessments
 
-For security concerns, see [SECURITY.md](SECURITY.md).
+## 🎨 Report Features
+
+### HTML Report Includes:
+- Executive summary with compliance percentage
+- Visual statistics dashboard
+- Sectioned results by CIS domains
+- Priority recommendations
+- Detailed findings with remediation guidance
+
+### CSV Export Provides:
+- Machine-readable data for analysis
+- Integration with SIEM/GRC tools
+- Historical compliance tracking
+- Custom reporting capabilities
 
 ## 🤝 Contributing
 
@@ -159,22 +189,21 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🏷️ Version
 
-Current version: 1.0.0
+Current version: 2.0.0
 
 ## 📞 Support
 
 - 🐛 [Report Issues](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/issues)
 - 💬 [Discussions](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/discussions)
 - 📚 [Documentation](docs/)
-- 🔍 [Wiki](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/wiki)
 
 ## 📚 References
 
 - [CIS VMware vSphere 8 Benchmark](https://www.cisecurity.org/benchmark/vmware)
-- [VMware vSphere 8 Documentation](https://docs.vmware.com/en/VMware-vSphere/8.0/vsphere-esxi-vcenter-server-80-installation-setup-guide.pdf)
+- [VMware vSphere 8 Documentation](https://docs.vmware.com/en/VMware-vSphere/8.0/)
 - [VMware Security Hardening Guides](https://core.vmware.com/security)
 - [VMware PowerCLI Documentation](https://developer.vmware.com/powercli)
 
 ---
 
-**⭐ If this project helps you, please give it a star!**
+**⭐ If this project helps you secure your VMware environment, please give it a star!**

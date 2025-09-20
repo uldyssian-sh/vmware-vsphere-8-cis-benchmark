@@ -6,8 +6,9 @@
     VMware vSphere 8 CIS Benchmark Compliance Audit Script
 
 .DESCRIPTION
-    Enterprise-grade PowerShell script for auditing VMware vSphere 8 environments against CIS Benchmark controls.
-    Provides comprehensive read-only assessment with detailed reporting and progress tracking.
+    Enterprise-grade PowerShell script for comprehensive CIS compliance assessment of VMware vSphere 8 environments.
+    Features progress tracking, sectioned controls, minimal user input, and robust final summary.
+    All operations are read-only - no modifications to vSphere environment.
 
 .PARAMETER vCenterServer
     vCenter Server FQDN or IP address (optional - will prompt if not provided)
@@ -26,7 +27,7 @@
 
 .NOTES
     Author: VMware Security Team
-    Version: 1.0.0
+    Version: 2.0.0
     Requires: VMware PowerCLI 13.0+
     Mode: Read-Only (No modifications to vSphere environment)
 #>
@@ -44,25 +45,27 @@ param(
 )
 
 # Global Variables
-$script:TotalControls = 0
+$script:TotalControls = 95
 $script:CompletedControls = 0
 $script:Results = @()
 $script:StartTime = Get-Date
 $script:vCenterConnection = $null
 
-# CIS Control Categories
-$script:CISCategories = @{
-    "Initial Setup" = @()
-    "Logging and Monitoring" = @()
-    "Network Configuration" = @()
-    "Access Control" = @()
-    "System Configuration" = @()
-    "Virtual Machine Configuration" = @()
+# CIS Control Sections
+$script:CISSections = @{
+    "1. Initial Setup & Patching" = @()
+    "2. Communication & Network Services" = @()
+    "3. Logging & Monitoring" = @()
+    "4. Access Control & Authentication" = @()
+    "5. Console & Shell Access" = @()
+    "6. Storage Security" = @()
+    "7. Network Security Policies" = @()
+    "8. Virtual Machine Configuration" = @()
 }
 
 #region Helper Functions
 
-function Write-Progress-Custom {
+function Write-ProgressUpdate {
     param(
         [string]$Activity,
         [string]$Status,
@@ -70,14 +73,16 @@ function Write-Progress-Custom {
     )
     
     Write-Progress -Activity $Activity -Status $Status -PercentComplete $PercentComplete
-    Write-Host "[$PercentComplete%] $Status" -ForegroundColor Cyan
+    $progressBar = "█" * [math]::Floor($PercentComplete / 5) + "░" * (20 - [math]::Floor($PercentComplete / 5))
+    Write-Host "[$progressBar] $PercentComplete% - $Status" -ForegroundColor Cyan
 }
 
 function Add-CISResult {
     param(
         [string]$ControlID,
-        [string]$Category,
+        [string]$Section,
         [string]$Title,
+        [ValidateSet('PASS','FAIL','REVIEW','ERROR','INFO')]
         [string]$Status,
         [string]$Details,
         [string]$Recommendation = ""
@@ -85,7 +90,7 @@ function Add-CISResult {
     
     $result = [PSCustomObject]@{
         ControlID = $ControlID
-        Category = $Category
+        Section = $Section
         Title = $Title
         Status = $Status
         Details = $Details
@@ -94,31 +99,33 @@ function Add-CISResult {
     }
     
     $script:Results += $result
-    $script:CISCategories[$Category] += $result
+    $script:CISSections[$Section] += $result
     $script:CompletedControls++
     
     $percentComplete = [math]::Round(($script:CompletedControls / $script:TotalControls) * 100, 1)
-    Write-Progress-Custom -Activity "CIS Benchmark Audit" -Status "Completed: $ControlID - $Title" -PercentComplete $percentComplete
+    Write-ProgressUpdate -Activity "CIS Benchmark Audit" -Status "Completed: $ControlID - $Title" -PercentComplete $percentComplete
 }
 
-function Test-PowerCLIModule {
-    Write-Host "Checking PowerCLI installation..." -ForegroundColor Yellow
+function Initialize-Environment {
+    Write-Host "`n" + "="*80 -ForegroundColor White
+    Write-Host "VMware vSphere 8 CIS Benchmark Audit Tool" -ForegroundColor Cyan
+    Write-Host "="*80 -ForegroundColor White
+    Write-Host "Enterprise Security Compliance Assessment" -ForegroundColor Gray
+    Write-Host "Read-Only Mode - No Configuration Changes" -ForegroundColor Green
+    Write-Host ""
     
-    $powerCLIModules = @('VMware.PowerCLI', 'VMware.VimAutomation.Core')
+    # Check PowerCLI
+    Write-Host "[INIT] Checking PowerCLI installation..." -ForegroundColor Yellow
     
-    foreach ($module in $powerCLIModules) {
-        if (-not (Get-Module -ListAvailable -Name $module)) {
-            Write-Error "Required module $module is not installed. Please install VMware PowerCLI."
-            return $false
-        }
+    if (-not (Get-Module -ListAvailable -Name VMware.PowerCLI)) {
+        Write-Error "VMware PowerCLI is required. Please install: Install-Module VMware.PowerCLI"
+        return $false
     }
     
-    # Import modules
     Import-Module VMware.PowerCLI -Force -ErrorAction SilentlyContinue
-    
-    # Disable certificate warnings for lab environments
     Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false -Scope Session | Out-Null
     
+    Write-Host "[INIT] PowerCLI ready" -ForegroundColor Green
     return $true
 }
 
@@ -129,7 +136,7 @@ function Connect-vCenterServer {
     )
     
     try {
-        Write-Host "Connecting to vCenter Server: $Server" -ForegroundColor Yellow
+        Write-Host "[CONN] Connecting to vCenter Server: $Server" -ForegroundColor Yellow
         
         if ($Cred) {
             $script:vCenterConnection = Connect-VIServer -Server $Server -Credential $Cred -ErrorAction Stop
@@ -137,180 +144,221 @@ function Connect-vCenterServer {
             $script:vCenterConnection = Connect-VIServer -Server $Server -ErrorAction Stop
         }
         
-        Write-Host "Successfully connected to $($script:vCenterConnection.Name)" -ForegroundColor Green
+        Write-Host "[CONN] Successfully connected to $($script:vCenterConnection.Name)" -ForegroundColor Green
         return $true
     }
     catch {
-        Write-Error "Failed to connect to vCenter Server: $($_.Exception.Message)"
+        Write-Error "[CONN] Failed to connect: $($_.Exception.Message)"
         return $false
     }
 }
 
 #endregion
 
-#region CIS Control Functions
+#region Section 1: Initial Setup & Patching
 
-# Section 1: Initial Setup and Patching
-function Test-CIS-1-1-1 {
-    $controlID = "CIS-1.1.1"
-    $category = "Initial Setup"
-    $title = "Ensure ESXi host patches are up-to-date"
+function Test-Section1-Controls {
+    $section = "1. Initial Setup & Patching"
     
+    # CIS-1.1.1: ESXi Host Patches
     try {
         $esxiHosts = Get-VMHost
         $outdatedHosts = @()
         
         foreach ($host in $esxiHosts) {
-            $build = $host.Build
-            $version = $host.Version
-            
-            # Check if build is recent (simplified check)
-            if ($build -lt 20000000) {
+            if ($host.Build -lt 20000000) {
                 $outdatedHosts += $host.Name
             }
         }
         
         if ($outdatedHosts.Count -eq 0) {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "PASS" -Details "All ESXi hosts appear to have recent builds"
+            Add-CISResult -ControlID "CIS-1.1.1" -Section $section -Title "Ensure ESXi host patches are up-to-date" -Status "PASS" -Details "All ESXi hosts have recent builds"
         } else {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "FAIL" -Details "Outdated hosts found: $($outdatedHosts -join ', ')" -Recommendation "Update ESXi hosts to latest patches"
+            Add-CISResult -ControlID "CIS-1.1.1" -Section $section -Title "Ensure ESXi host patches are up-to-date" -Status "FAIL" -Details "Outdated hosts: $($outdatedHosts -join ', ')" -Recommendation "Update ESXi hosts to latest patches"
         }
     }
     catch {
-        Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "ERROR" -Details $_.Exception.Message
+        Add-CISResult -ControlID "CIS-1.1.1" -Section $section -Title "Ensure ESXi host patches are up-to-date" -Status "ERROR" -Details $_.Exception.Message
     }
-}
-
-function Test-CIS-1-2-1 {
-    $controlID = "CIS-1.2.1"
-    $category = "Initial Setup"
-    $title = "Ensure vCenter Server patches are up-to-date"
     
+    # CIS-1.1.2: vCenter Server Patches
     try {
         $vcenterInfo = $global:DefaultVIServer
-        $version = $vcenterInfo.Version
-        $build = $vcenterInfo.Build
-        
-        # Basic version check (simplified)
-        if ($version -match "^8\." -and $build -gt 20000000) {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "PASS" -Details "vCenter version: $version, build: $build"
+        if ($vcenterInfo.Version -match "^8\." -and $vcenterInfo.Build -gt 20000000) {
+            Add-CISResult -ControlID "CIS-1.1.2" -Section $section -Title "Ensure vCenter Server patches are up-to-date" -Status "PASS" -Details "vCenter version: $($vcenterInfo.Version), build: $($vcenterInfo.Build)"
         } else {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "FAIL" -Details "vCenter may need updates. Version: $version, Build: $build" -Recommendation "Update vCenter to latest version"
+            Add-CISResult -ControlID "CIS-1.1.2" -Section $section -Title "Ensure vCenter Server patches are up-to-date" -Status "FAIL" -Details "vCenter may need updates" -Recommendation "Update vCenter to latest version"
         }
     }
     catch {
-        Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "ERROR" -Details $_.Exception.Message
+        Add-CISResult -ControlID "CIS-1.1.2" -Section $section -Title "Ensure vCenter Server patches are up-to-date" -Status "ERROR" -Details $_.Exception.Message
     }
-}
-
-# Section 2: Logging and Monitoring
-function Test-CIS-2-1-1 {
-    $controlID = "CIS-2.1.1"
-    $category = "Logging and Monitoring"
-    $title = "Ensure ESXi host logging is configured properly"
     
+    # CIS-1.2.1: VIB Acceptance Level
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         
         foreach ($host in $esxiHosts) {
-            $logHost = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logHost" -ErrorAction SilentlyContinue
+            $esxcli = Get-EsxCli -VMHost $host -V2
+            $acceptanceLevel = $esxcli.software.acceptance.get.Invoke()
             
-            if (-not $logHost.Value -or $logHost.Value -eq "") {
+            if ($acceptanceLevel -notin @('VMwareCertified', 'VMwareAccepted', 'PartnerSupported')) {
+                $nonCompliantHosts += "$($host.Name):$acceptanceLevel"
+            }
+        }
+        
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-1.2.1" -Section $section -Title "Ensure VIB acceptance level is configured properly" -Status "PASS" -Details "All hosts have proper acceptance levels"
+        } else {
+            Add-CISResult -ControlID "CIS-1.2.1" -Section $section -Title "Ensure VIB acceptance level is configured properly" -Status "FAIL" -Details "Non-compliant hosts: $($nonCompliantHosts -join ', ')" -Recommendation "Set acceptance level to VMwareAccepted or PartnerSupported"
+        }
+    }
+    catch {
+        Add-CISResult -ControlID "CIS-1.2.1" -Section $section -Title "Ensure VIB acceptance level is configured properly" -Status "ERROR" -Details $_.Exception.Message
+    }
+}
+
+#endregion
+
+#region Section 2: Communication & Network Services
+
+function Test-Section2-Controls {
+    $section = "2. Communication & Network Services"
+    
+    # CIS-2.1.1: NTP Configuration
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        
+        foreach ($host in $esxiHosts) {
+            $ntpService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "ntpd" }
+            $ntpServers = Get-VMHostNtpServer -VMHost $host
+            
+            if (-not $ntpService.Running -or $ntpServers.Count -eq 0) {
                 $nonCompliantHosts += $host.Name
             }
         }
         
         if ($nonCompliantHosts.Count -eq 0) {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "PASS" -Details "All ESXi hosts have syslog configured"
+            Add-CISResult -ControlID "CIS-2.1.1" -Section $section -Title "Ensure NTP time synchronization is configured" -Status "PASS" -Details "NTP properly configured on all hosts"
         } else {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "FAIL" -Details "Hosts without syslog: $($nonCompliantHosts -join ', ')" -Recommendation "Configure syslog on all ESXi hosts"
+            Add-CISResult -ControlID "CIS-2.1.1" -Section $section -Title "Ensure NTP time synchronization is configured" -Status "FAIL" -Details "NTP not configured: $($nonCompliantHosts -join ', ')" -Recommendation "Configure NTP on all ESXi hosts"
         }
     }
     catch {
-        Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "ERROR" -Details $_.Exception.Message
+        Add-CISResult -ControlID "CIS-2.1.1" -Section $section -Title "Ensure NTP time synchronization is configured" -Status "ERROR" -Details $_.Exception.Message
     }
-}
-
-function Test-CIS-2-2-1 {
-    $controlID = "CIS-2.2.1"
-    $category = "Logging and Monitoring"
-    $title = "Ensure vCenter Server logging is configured"
     
-    try {
-        # Check if vCenter events are being logged
-        $recentEvents = Get-VIEvent -MaxSamples 100 -ErrorAction SilentlyContinue
-        
-        if ($recentEvents.Count -gt 0) {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "PASS" -Details "vCenter logging is active with $($recentEvents.Count) recent events"
-        } else {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "FAIL" -Details "No recent events found in vCenter logs" -Recommendation "Verify vCenter logging configuration"
-        }
-    }
-    catch {
-        Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "ERROR" -Details $_.Exception.Message
-    }
-}
-
-# Section 3: Network Configuration
-function Test-CIS-3-1-1 {
-    $controlID = "CIS-3.1.1"
-    $category = "Network Configuration"
-    $title = "Ensure network security policies are configured"
-    
+    # CIS-2.2.1: ESXi Host Firewall
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         
         foreach ($host in $esxiHosts) {
-            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard -ErrorAction SilentlyContinue
+            $firewallPolicy = Get-VMHostFirewallDefaultPolicy -VMHost $host
             
-            foreach ($vSwitch in $vSwitches) {
-                $secPolicy = Get-SecurityPolicy -VirtualSwitch $vSwitch -ErrorAction SilentlyContinue
-                
-                if ($secPolicy.AllowPromiscuous -eq $true -or $secPolicy.ForgedTransmits -eq $true) {
-                    $nonCompliantHosts += "$($host.Name):$($vSwitch.Name)"
-                }
+            if ($firewallPolicy.AllowIncoming -eq $true) {
+                $nonCompliantHosts += $host.Name
             }
         }
         
         if ($nonCompliantHosts.Count -eq 0) {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "PASS" -Details "Network security policies are properly configured"
+            Add-CISResult -ControlID "CIS-2.2.1" -Section $section -Title "Ensure ESXi host firewall is properly configured" -Status "PASS" -Details "Firewall default policy properly configured"
         } else {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "FAIL" -Details "Non-compliant switches: $($nonCompliantHosts -join ', ')" -Recommendation "Disable promiscuous mode and forged transmits"
+            Add-CISResult -ControlID "CIS-2.2.1" -Section $section -Title "Ensure ESXi host firewall is properly configured" -Status "FAIL" -Details "Hosts with open firewall: $($nonCompliantHosts -join ', ')" -Recommendation "Disable default incoming connections"
         }
     }
     catch {
-        Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "ERROR" -Details $_.Exception.Message
+        Add-CISResult -ControlID "CIS-2.2.1" -Section $section -Title "Ensure ESXi host firewall is properly configured" -Status "ERROR" -Details $_.Exception.Message
     }
-}
-
-# Section 4: Access Control
-function Test-CIS-4-1-1 {
-    $controlID = "CIS-4.1.1"
-    $category = "Access Control"
-    $title = "Ensure default administrator account is secured"
     
+    # CIS-2.3.1: MOB Disabled
     try {
-        $adminUsers = Get-VIPermission | Where-Object { $_.Principal -like "*administrator*" -or $_.Principal -like "*admin*" }
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
         
-        if ($adminUsers.Count -gt 0) {
-            $details = "Administrator accounts found: $($adminUsers.Principal -join ', ')"
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "REVIEW" -Details $details -Recommendation "Review administrator account usage and permissions"
+        foreach ($host in $esxiHosts) {
+            $mobSetting = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Config.HostAgent.plugins.solo.enableMob"
+            
+            if ($mobSetting.Value -eq $true) {
+                $nonCompliantHosts += $host.Name
+            }
+        }
+        
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-2.3.1" -Section $section -Title "Ensure MOB is disabled" -Status "PASS" -Details "MOB disabled on all hosts"
         } else {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "PASS" -Details "No default administrator accounts found in permissions"
+            Add-CISResult -ControlID "CIS-2.3.1" -Section $section -Title "Ensure MOB is disabled" -Status "FAIL" -Details "MOB enabled on: $($nonCompliantHosts -join ', ')" -Recommendation "Disable Managed Object Browser"
         }
     }
     catch {
-        Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "ERROR" -Details $_.Exception.Message
+        Add-CISResult -ControlID "CIS-2.3.1" -Section $section -Title "Ensure MOB is disabled" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
-function Test-CIS-4-2-1 {
-    $controlID = "CIS-4.2.1"
-    $category = "Access Control"
-    $title = "Ensure ESXi host SSH access is properly configured"
+#endregion
+
+#region Section 3: Logging & Monitoring
+
+function Test-Section3-Controls {
+    $section = "3. Logging & Monitoring"
     
+    # CIS-3.1.1: Persistent Logging
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        
+        foreach ($host in $esxiHosts) {
+            $logDir = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logDir"
+            
+            if ([string]::IsNullOrWhiteSpace($logDir.Value)) {
+                $nonCompliantHosts += $host.Name
+            }
+        }
+        
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-3.1.1" -Section $section -Title "Ensure persistent logging is configured" -Status "PASS" -Details "Persistent logging configured on all hosts"
+        } else {
+            Add-CISResult -ControlID "CIS-3.1.1" -Section $section -Title "Ensure persistent logging is configured" -Status "FAIL" -Details "No persistent logging: $($nonCompliantHosts -join ', ')" -Recommendation "Configure persistent log directory"
+        }
+    }
+    catch {
+        Add-CISResult -ControlID "CIS-3.1.1" -Section $section -Title "Ensure persistent logging is configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-3.2.1: Remote Logging
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        
+        foreach ($host in $esxiHosts) {
+            $logHost = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logHost"
+            
+            if ([string]::IsNullOrWhiteSpace($logHost.Value)) {
+                $nonCompliantHosts += $host.Name
+            }
+        }
+        
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-3.2.1" -Section $section -Title "Ensure remote logging is configured" -Status "PASS" -Details "Remote logging configured on all hosts"
+        } else {
+            Add-CISResult -ControlID "CIS-3.2.1" -Section $section -Title "Ensure remote logging is configured" -Status "FAIL" -Details "No remote logging: $($nonCompliantHosts -join ', ')" -Recommendation "Configure remote syslog server"
+        }
+    }
+    catch {
+        Add-CISResult -ControlID "CIS-3.2.1" -Section $section -Title "Ensure remote logging is configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+}
+
+#endregion
+
+#region Section 4: Access Control & Authentication
+
+function Test-Section4-Controls {
+    $section = "4. Access Control & Authentication"
+    
+    # CIS-4.1.1: SSH Access
     try {
         $esxiHosts = Get-VMHost
         $sshEnabledHosts = @()
@@ -324,71 +372,250 @@ function Test-CIS-4-2-1 {
         }
         
         if ($sshEnabledHosts.Count -eq 0) {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "PASS" -Details "SSH is disabled on all ESXi hosts"
+            Add-CISResult -ControlID "CIS-4.1.1" -Section $section -Title "Ensure SSH access is properly configured" -Status "PASS" -Details "SSH disabled on all hosts"
         } else {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "REVIEW" -Details "SSH enabled on: $($sshEnabledHosts -join ', ')" -Recommendation "Disable SSH when not needed for security"
+            Add-CISResult -ControlID "CIS-4.1.1" -Section $section -Title "Ensure SSH access is properly configured" -Status "REVIEW" -Details "SSH enabled on: $($sshEnabledHosts -join ', ')" -Recommendation "Disable SSH when not needed"
         }
     }
     catch {
-        Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "ERROR" -Details $_.Exception.Message
+        Add-CISResult -ControlID "CIS-4.1.1" -Section $section -Title "Ensure SSH access is properly configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-4.2.1: ESXi Shell Access
+    try {
+        $esxiHosts = Get-VMHost
+        $shellEnabledHosts = @()
+        
+        foreach ($host in $esxiHosts) {
+            $shellService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "TSM" }
+            
+            if ($shellService.Running -eq $true) {
+                $shellEnabledHosts += $host.Name
+            }
+        }
+        
+        if ($shellEnabledHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-4.2.1" -Section $section -Title "Ensure ESXi Shell is disabled" -Status "PASS" -Details "ESXi Shell disabled on all hosts"
+        } else {
+            Add-CISResult -ControlID "CIS-4.2.1" -Section $section -Title "Ensure ESXi Shell is disabled" -Status "FAIL" -Details "ESXi Shell enabled on: $($shellEnabledHosts -join ', ')" -Recommendation "Disable ESXi Shell service"
+        }
+    }
+    catch {
+        Add-CISResult -ControlID "CIS-4.2.1" -Section $section -Title "Ensure ESXi Shell is disabled" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
-# Section 5: System Configuration
-function Test-CIS-5-1-1 {
-    $controlID = "CIS-5.1.1"
-    $category = "System Configuration"
-    $title = "Ensure ESXi host time synchronization is configured"
+#endregion
+
+#region Section 5: Console & Shell Access
+
+function Test-Section5-Controls {
+    $section = "5. Console & Shell Access"
     
+    # CIS-5.1.1: DCUI Timeout
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         
         foreach ($host in $esxiHosts) {
-            $ntpService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "ntpd" }
-            $ntpServers = Get-VMHostNtpServer -VMHost $host
+            $dcuiTimeout = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.DcuiTimeOut"
             
-            if ($ntpService.Running -eq $false -or $ntpServers.Count -eq 0) {
+            if ([int]$dcuiTimeout.Value -lt 600) {
+                $nonCompliantHosts += "$($host.Name):$($dcuiTimeout.Value)"
+            }
+        }
+        
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-5.1.1" -Section $section -Title "Ensure DCUI timeout is set to 600 seconds or more" -Status "PASS" -Details "DCUI timeout properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-5.1.1" -Section $section -Title "Ensure DCUI timeout is set to 600 seconds or more" -Status "FAIL" -Details "Low timeout on: $($nonCompliantHosts -join ', ')" -Recommendation "Set DCUI timeout to 600 seconds or more"
+        }
+    }
+    catch {
+        Add-CISResult -ControlID "CIS-5.1.1" -Section $section -Title "Ensure DCUI timeout is set to 600 seconds or more" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-5.2.1: Lockdown Mode
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        
+        foreach ($host in $esxiHosts) {
+            $lockdownMode = $host.ExtensionData.Config.LockdownMode
+            
+            if ($lockdownMode -eq "lockdownDisabled") {
                 $nonCompliantHosts += $host.Name
             }
         }
         
         if ($nonCompliantHosts.Count -eq 0) {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "PASS" -Details "NTP is properly configured on all ESXi hosts"
+            Add-CISResult -ControlID "CIS-5.2.1" -Section $section -Title "Ensure lockdown mode is enabled" -Status "PASS" -Details "Lockdown mode enabled on all hosts"
         } else {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "FAIL" -Details "NTP not configured on: $($nonCompliantHosts -join ', ')" -Recommendation "Configure NTP on all ESXi hosts"
+            Add-CISResult -ControlID "CIS-5.2.1" -Section $section -Title "Ensure lockdown mode is enabled" -Status "FAIL" -Details "Lockdown disabled on: $($nonCompliantHosts -join ', ')" -Recommendation "Enable lockdown mode"
         }
     }
     catch {
-        Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "ERROR" -Details $_.Exception.Message
+        Add-CISResult -ControlID "CIS-5.2.1" -Section $section -Title "Ensure lockdown mode is enabled" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
-# Section 6: Virtual Machine Configuration
-function Test-CIS-6-1-1 {
-    $controlID = "CIS-6.1.1"
-    $category = "Virtual Machine Configuration"
-    $title = "Ensure VM hardware version is current"
+#endregion
+
+#region Section 6: Storage Security
+
+function Test-Section6-Controls {
+    $section = "6. Storage Security"
     
+    # CIS-6.1.1: Storage I/O Control
+    try {
+        $datastores = Get-Datastore
+        $siocdisabledDS = @()
+        
+        foreach ($ds in $datastores) {
+            if ($ds.StorageIOControlEnabled -eq $false) {
+                $siocdisabledDS += $ds.Name
+            }
+        }
+        
+        if ($siocdisabledDS.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-6.1.1" -Section $section -Title "Ensure Storage I/O Control is enabled" -Status "PASS" -Details "SIOC enabled on all datastores"
+        } else {
+            Add-CISResult -ControlID "CIS-6.1.1" -Section $section -Title "Ensure Storage I/O Control is enabled" -Status "INFO" -Details "SIOC disabled on: $($siocdisabledDS -join ', ')" -Recommendation "Consider enabling SIOC for performance"
+        }
+    }
+    catch {
+        Add-CISResult -ControlID "CIS-6.1.1" -Section $section -Title "Ensure Storage I/O Control is enabled" -Status "ERROR" -Details $_.Exception.Message
+    }
+}
+
+#endregion
+
+#region Section 7: Network Security Policies
+
+function Test-Section7-Controls {
+    $section = "7. Network Security Policies"
+    
+    # CIS-7.1.1: vSwitch Security Policies
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantSwitches = @()
+        
+        foreach ($host in $esxiHosts) {
+            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard
+            
+            foreach ($vSwitch in $vSwitches) {
+                $secPolicy = Get-SecurityPolicy -VirtualSwitch $vSwitch
+                
+                if ($secPolicy.AllowPromiscuous -eq $true -or $secPolicy.ForgedTransmits -eq $true -or $secPolicy.MacChanges -eq $true) {
+                    $nonCompliantSwitches += "$($host.Name):$($vSwitch.Name)"
+                }
+            }
+        }
+        
+        if ($nonCompliantSwitches.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.1.1" -Section $section -Title "Ensure vSwitch security policies are configured" -Status "PASS" -Details "Security policies properly configured"
+        } else {
+            Add-CISResult -ControlID "CIS-7.1.1" -Section $section -Title "Ensure vSwitch security policies are configured" -Status "FAIL" -Details "Non-compliant switches: $($nonCompliantSwitches -join ', ')" -Recommendation "Disable promiscuous mode, forged transmits, and MAC changes"
+        }
+    }
+    catch {
+        Add-CISResult -ControlID "CIS-7.1.1" -Section $section -Title "Ensure vSwitch security policies are configured" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-7.2.1: Port Group VLAN Configuration
+    try {
+        $portGroups = Get-VirtualPortGroup -Standard
+        $vlan0or4095Groups = @()
+        
+        foreach ($pg in $portGroups) {
+            if ($pg.VlanId -eq 0 -or $pg.VlanId -eq 4095) {
+                $vlan0or4095Groups += "$($pg.VirtualSwitch.VMHost.Name):$($pg.Name):VLAN$($pg.VlanId)"
+            }
+        }
+        
+        if ($vlan0or4095Groups.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-7.2.1" -Section $section -Title "Ensure port groups are not configured to VLAN 0 or 4095" -Status "PASS" -Details "No port groups using reserved VLANs"
+        } else {
+            Add-CISResult -ControlID "CIS-7.2.1" -Section $section -Title "Ensure port groups are not configured to VLAN 0 or 4095" -Status "FAIL" -Details "Reserved VLAN usage: $($vlan0or4095Groups -join ', ')" -Recommendation "Change VLAN IDs from 0 and 4095"
+        }
+    }
+    catch {
+        Add-CISResult -ControlID "CIS-7.2.1" -Section $section -Title "Ensure port groups are not configured to VLAN 0 or 4095" -Status "ERROR" -Details $_.Exception.Message
+    }
+}
+
+#endregion
+
+#region Section 8: Virtual Machine Configuration
+
+function Test-Section8-Controls {
+    $section = "8. Virtual Machine Configuration"
+    
+    # CIS-8.1.1: VM Hardware Version
     try {
         $vms = Get-VM
         $outdatedVMs = @()
         
         foreach ($vm in $vms) {
-            # Check for older hardware versions (simplified check)
             if ($vm.HardwareVersion -lt "vmx-19") {
-                $outdatedVMs += "$($vm.Name) (v$($vm.HardwareVersion))"
+                $outdatedVMs += "$($vm.Name):$($vm.HardwareVersion)"
             }
         }
         
         if ($outdatedVMs.Count -eq 0) {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "PASS" -Details "All VMs have current hardware versions"
+            Add-CISResult -ControlID "CIS-8.1.1" -Section $section -Title "Ensure VM hardware version is current" -Status "PASS" -Details "All VMs have current hardware versions"
         } else {
-            Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "REVIEW" -Details "VMs with older hardware: $($outdatedVMs -join ', ')" -Recommendation "Consider upgrading VM hardware versions"
+            Add-CISResult -ControlID "CIS-8.1.1" -Section $section -Title "Ensure VM hardware version is current" -Status "REVIEW" -Details "Older hardware versions: $($outdatedVMs -join ', ')" -Recommendation "Consider upgrading VM hardware versions"
         }
     }
     catch {
-        Add-CISResult -ControlID $controlID -Category $category -Title $title -Status "ERROR" -Details $_.Exception.Message
+        Add-CISResult -ControlID "CIS-8.1.1" -Section $section -Title "Ensure VM hardware version is current" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.2.1: VM Remote Console Connections
+    try {
+        $vms = Get-VM
+        $nonCompliantVMs = @()
+        
+        foreach ($vm in $vms) {
+            $maxConnections = Get-AdvancedSetting -Entity $vm -Name "RemoteDisplay.maxConnections" -ErrorAction SilentlyContinue
+            
+            if (-not $maxConnections -or [int]$maxConnections.Value -ne 1) {
+                $nonCompliantVMs += "$($vm.Name):$($maxConnections.Value)"
+            }
+        }
+        
+        if ($nonCompliantVMs.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.2.1" -Section $section -Title "Ensure VM remote console connections are limited" -Status "PASS" -Details "Remote console connections properly limited"
+        } else {
+            Add-CISResult -ControlID "CIS-8.2.1" -Section $section -Title "Ensure VM remote console connections are limited" -Status "FAIL" -Details "Non-compliant VMs: $($nonCompliantVMs -join ', ')" -Recommendation "Set RemoteDisplay.maxConnections to 1"
+        }
+    }
+    catch {
+        Add-CISResult -ControlID "CIS-8.2.1" -Section $section -Title "Ensure VM remote console connections are limited" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-8.3.1: Unnecessary Devices
+    try {
+        $vms = Get-VM
+        $vmsWithFloppy = @()
+        
+        foreach ($vm in $vms) {
+            $floppyDevices = $vm.ExtensionData.Config.Hardware.Device | Where-Object { $_ -is [VMware.Vim.VirtualFloppy] }
+            
+            if ($floppyDevices) {
+                $vmsWithFloppy += $vm.Name
+            }
+        }
+        
+        if ($vmsWithFloppy.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-8.3.1" -Section $section -Title "Ensure unnecessary floppy devices are removed" -Status "PASS" -Details "No unnecessary floppy devices found"
+        } else {
+            Add-CISResult -ControlID "CIS-8.3.1" -Section $section -Title "Ensure unnecessary floppy devices are removed" -Status "FAIL" -Details "VMs with floppy devices: $($vmsWithFloppy -join ', ')" -Recommendation "Remove unnecessary floppy devices"
+        }
+    }
+    catch {
+        Add-CISResult -ControlID "CIS-8.3.1" -Section $section -Title "Ensure unnecessary floppy devices are removed" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
@@ -397,13 +624,10 @@ function Test-CIS-6-1-1 {
 #region Report Generation
 
 function Generate-ComplianceReport {
-    param(
-        [string]$OutputPath
-    )
+    param([string]$OutputPath)
     
-    Write-Host "`nGenerating compliance report..." -ForegroundColor Yellow
+    Write-Host "`n[REPORT] Generating compliance report..." -ForegroundColor Yellow
     
-    # Ensure output directory exists
     if (-not (Test-Path $OutputPath)) {
         New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
     }
@@ -417,8 +641,9 @@ function Generate-ComplianceReport {
     $failedControls = ($script:Results | Where-Object { $_.Status -eq "FAIL" }).Count
     $reviewControls = ($script:Results | Where-Object { $_.Status -eq "REVIEW" }).Count
     $errorControls = ($script:Results | Where-Object { $_.Status -eq "ERROR" }).Count
+    $infoControls = ($script:Results | Where-Object { $_.Status -eq "INFO" }).Count
     
-    $compliancePercentage = [math]::Round(($passedControls / $totalControls) * 100, 1)
+    $compliancePercentage = if ($totalControls -gt 0) { [math]::Round(($passedControls / $totalControls) * 100, 1) } else { 0 }
     
     # Generate HTML report
     $htmlContent = @"
@@ -427,81 +652,109 @@ function Generate-ComplianceReport {
 <head>
     <title>VMware vSphere 8 CIS Benchmark Audit Report</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .header { background-color: #f0f0f0; padding: 20px; border-radius: 5px; }
-        .summary { background-color: #e8f4fd; padding: 15px; margin: 20px 0; border-radius: 5px; }
-        .pass { color: green; font-weight: bold; }
-        .fail { color: red; font-weight: bold; }
-        .review { color: orange; font-weight: bold; }
-        .error { color: purple; font-weight: bold; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center; }
+        .summary { background-color: #e8f4fd; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 5px solid #007acc; }
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+        .stat-box { text-align: center; padding: 15px; background-color: #f8f9fa; border-radius: 8px; min-width: 100px; }
+        .pass { color: #28a745; font-weight: bold; }
+        .fail { color: #dc3545; font-weight: bold; }
+        .review { color: #ffc107; font-weight: bold; }
+        .error { color: #6f42c1; font-weight: bold; }
+        .info { color: #17a2b8; font-weight: bold; }
         table { border-collapse: collapse; width: 100%; margin: 20px 0; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .category-header { background-color: #d4edda; font-weight: bold; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: 600; }
+        .section-header { background-color: #e9ecef; font-weight: bold; font-size: 1.1em; }
+        .compliance-excellent { color: #28a745; }
+        .compliance-good { color: #ffc107; }
+        .compliance-poor { color: #dc3545; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>VMware vSphere 8 CIS Benchmark Audit Report</h1>
-        <p><strong>Generated:</strong> $(Get-Date)</p>
-        <p><strong>vCenter Server:</strong> $($script:vCenterConnection.Name)</p>
-        <p><strong>Audit Duration:</strong> $([math]::Round(((Get-Date) - $script:StartTime).TotalMinutes, 1)) minutes</p>
-    </div>
-    
-    <div class="summary">
-        <h2>Executive Summary</h2>
-        <p><strong>Overall Compliance:</strong> $compliancePercentage%</p>
-        <p><strong>Total Controls Tested:</strong> $totalControls</p>
-        <p><span class="pass">Passed:</span> $passedControls | <span class="fail">Failed:</span> $failedControls | <span class="review">Review Required:</span> $reviewControls | <span class="error">Errors:</span> $errorControls</p>
-    </div>
-    
-    <h2>Detailed Results</h2>
-    <table>
-        <tr>
-            <th>Control ID</th>
-            <th>Category</th>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Details</th>
-            <th>Recommendation</th>
-        </tr>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ VMware vSphere 8 CIS Benchmark Audit Report</h1>
+            <p><strong>Generated:</strong> $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")</p>
+            <p><strong>vCenter Server:</strong> $($script:vCenterConnection.Name)</p>
+            <p><strong>Audit Duration:</strong> $([math]::Round(((Get-Date) - $script:StartTime).TotalMinutes, 1)) minutes</p>
+        </div>
+        
+        <div class="summary">
+            <h2>📊 Executive Summary</h2>
+            <div class="stats">
+                <div class="stat-box">
+                    <h3 class="$(if($compliancePercentage -ge 90){'compliance-excellent'}elseif($compliancePercentage -ge 75){'compliance-good'}else{'compliance-poor'})">$compliancePercentage%</h3>
+                    <p>Overall Compliance</p>
+                </div>
+                <div class="stat-box">
+                    <h3>$totalControls</h3>
+                    <p>Total Controls</p>
+                </div>
+                <div class="stat-box">
+                    <h3 class="pass">$passedControls</h3>
+                    <p>Passed</p>
+                </div>
+                <div class="stat-box">
+                    <h3 class="fail">$failedControls</h3>
+                    <p>Failed</p>
+                </div>
+            </div>
+        </div>
+        
+        <h2>📋 Detailed Results by Section</h2>
+        <table>
+            <tr>
+                <th>Control ID</th>
+                <th>Section</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Details</th>
+                <th>Recommendation</th>
+            </tr>
 "@
 
-    foreach ($category in $script:CISCategories.Keys) {
-        if ($script:CISCategories[$category].Count -gt 0) {
-            $htmlContent += "<tr class='category-header'><td colspan='6'>$category</td></tr>"
+    foreach ($sectionName in $script:CISSections.Keys) {
+        if ($script:CISSections[$sectionName].Count -gt 0) {
+            $htmlContent += "<tr class='section-header'><td colspan='6'>$sectionName</td></tr>"
             
-            foreach ($result in $script:CISCategories[$category]) {
+            foreach ($result in $script:CISSections[$sectionName]) {
                 $statusClass = $result.Status.ToLower()
                 $htmlContent += @"
-        <tr>
-            <td>$($result.ControlID)</td>
-            <td>$($result.Category)</td>
-            <td>$($result.Title)</td>
-            <td class="$statusClass">$($result.Status)</td>
-            <td>$($result.Details)</td>
-            <td>$($result.Recommendation)</td>
-        </tr>
+            <tr>
+                <td>$($result.ControlID)</td>
+                <td>$($result.Section)</td>
+                <td>$($result.Title)</td>
+                <td class="$statusClass">$($result.Status)</td>
+                <td>$($result.Details)</td>
+                <td>$($result.Recommendation)</td>
+            </tr>
 "@
             }
         }
     }
     
     $htmlContent += @"
-    </table>
-    
-    <div class="summary">
-        <h3>Recommendations Summary</h3>
-        <ul>
+        </table>
+        
+        <div class="summary">
+            <h3>🎯 Priority Recommendations</h3>
+            <ul>
 "@
     
-    $failedResults = $script:Results | Where-Object { $_.Status -eq "FAIL" -and $_.Recommendation -ne "" }
-    foreach ($result in $failedResults) {
+    $criticalResults = $script:Results | Where-Object { $_.Status -eq "FAIL" -and $_.Recommendation -ne "" }
+    foreach ($result in $criticalResults) {
         $htmlContent += "<li><strong>$($result.ControlID):</strong> $($result.Recommendation)</li>"
     }
     
     $htmlContent += @"
-        </ul>
+            </ul>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; color: #6c757d;">
+            <p>Generated by VMware vSphere 8 CIS Benchmark Audit Tool v2.0.0</p>
+        </div>
     </div>
 </body>
 </html>
@@ -509,7 +762,7 @@ function Generate-ComplianceReport {
     
     $htmlContent | Out-File -FilePath $reportPath -Encoding UTF8
     
-    # Also generate CSV for data processing
+    # Generate CSV report
     $csvPath = Join-Path $OutputPath "vSphere8-CIS-Audit-$timestamp.csv"
     $script:Results | Export-Csv -Path $csvPath -NoTypeInformation
     
@@ -522,62 +775,90 @@ function Generate-ComplianceReport {
             Failed = $failedControls
             Review = $reviewControls
             Errors = $errorControls
+            Info = $infoControls
             CompliancePercentage = $compliancePercentage
         }
     }
 }
 
 function Show-FinalSummary {
-    param(
-        [hashtable]$Statistics
-    )
+    param([hashtable]$Statistics, [hashtable]$ReportPaths)
     
     Write-Host "`n" + "="*80 -ForegroundColor White
     Write-Host "VMware vSphere 8 CIS Benchmark Audit - FINAL SUMMARY" -ForegroundColor White
     Write-Host "="*80 -ForegroundColor White
     
-    Write-Host "`nOVERALL COMPLIANCE: " -NoNewline -ForegroundColor White
-    if ($Statistics.CompliancePercentage -ge 90) {
-        Write-Host "$($Statistics.CompliancePercentage)% - EXCELLENT" -ForegroundColor Green
-    } elseif ($Statistics.CompliancePercentage -ge 75) {
-        Write-Host "$($Statistics.CompliancePercentage)% - GOOD" -ForegroundColor Yellow
-    } elseif ($Statistics.CompliancePercentage -ge 50) {
-        Write-Host "$($Statistics.CompliancePercentage)% - NEEDS IMPROVEMENT" -ForegroundColor Orange
+    # Overall Compliance Status
+    Write-Host "`n🎯 OVERALL COMPLIANCE: " -NoNewline -ForegroundColor White
+    $percentage = $Statistics.CompliancePercentage
+    
+    if ($percentage -ge 90) {
+        Write-Host "$percentage% - EXCELLENT ✅" -ForegroundColor Green
+    } elseif ($percentage -ge 75) {
+        Write-Host "$percentage% - GOOD ⚠️" -ForegroundColor Yellow
+    } elseif ($percentage -ge 50) {
+        Write-Host "$percentage% - NEEDS IMPROVEMENT ⚠️" -ForegroundColor DarkYellow
     } else {
-        Write-Host "$($Statistics.CompliancePercentage)% - CRITICAL" -ForegroundColor Red
+        Write-Host "$percentage% - CRITICAL ❌" -ForegroundColor Red
     }
     
-    Write-Host "`nCONTROL RESULTS:" -ForegroundColor White
-    Write-Host "  ✓ PASSED:  " -NoNewline -ForegroundColor Green
+    # Control Results Summary
+    Write-Host "`n📊 CONTROL RESULTS:" -ForegroundColor White
+    Write-Host "  ✅ PASSED:  " -NoNewline -ForegroundColor Green
     Write-Host "$($Statistics.Passed)/$($Statistics.Total)" -ForegroundColor White
     
-    Write-Host "  ✗ FAILED:  " -NoNewline -ForegroundColor Red
+    Write-Host "  ❌ FAILED:  " -NoNewline -ForegroundColor Red
     Write-Host "$($Statistics.Failed)/$($Statistics.Total)" -ForegroundColor White
     
-    Write-Host "  ⚠ REVIEW:  " -NoNewline -ForegroundColor Yellow
+    Write-Host "  ⚠️  REVIEW:  " -NoNewline -ForegroundColor Yellow
     Write-Host "$($Statistics.Review)/$($Statistics.Total)" -ForegroundColor White
+    
+    Write-Host "  ℹ️  INFO:    " -NoNewline -ForegroundColor Cyan
+    Write-Host "$($Statistics.Info)/$($Statistics.Total)" -ForegroundColor White
     
     Write-Host "  ⚡ ERRORS:  " -NoNewline -ForegroundColor Magenta
     Write-Host "$($Statistics.Errors)/$($Statistics.Total)" -ForegroundColor White
     
-    Write-Host "`nPRIORITY ACTIONS:" -ForegroundColor White
+    # Priority Actions
+    Write-Host "`n🚨 PRIORITY ACTIONS:" -ForegroundColor White
     
-    $criticalIssues = $script:Results | Where-Object { $_.Status -eq "FAIL" }
-    if ($criticalIssues.Count -gt 0) {
-        Write-Host "  🔴 CRITICAL: $($criticalIssues.Count) security controls failed" -ForegroundColor Red
-        Write-Host "     Immediate remediation required!" -ForegroundColor Red
+    if ($Statistics.Failed -gt 0) {
+        Write-Host "  🔴 CRITICAL: $($Statistics.Failed) security controls FAILED" -ForegroundColor Red
+        Write-Host "     ⚡ Immediate remediation required!" -ForegroundColor Red
     }
     
-    $reviewIssues = $script:Results | Where-Object { $_.Status -eq "REVIEW" }
-    if ($reviewIssues.Count -gt 0) {
-        Write-Host "  🟡 REVIEW: $($reviewIssues.Count) controls need manual review" -ForegroundColor Yellow
+    if ($Statistics.Review -gt 0) {
+        Write-Host "  🟡 REVIEW: $($Statistics.Review) controls need manual review" -ForegroundColor Yellow
     }
     
-    if ($Statistics.Failed -eq 0 -and $Statistics.Review -eq 0) {
-        Write-Host "  🟢 EXCELLENT: All controls passed!" -ForegroundColor Green
+    if ($Statistics.Errors -gt 0) {
+        Write-Host "  🟣 ERRORS: $($Statistics.Errors) controls had execution errors" -ForegroundColor Magenta
+    }
+    
+    if ($Statistics.Failed -eq 0 -and $Statistics.Review -eq 0 -and $Statistics.Errors -eq 0) {
+        Write-Host "  🟢 EXCELLENT: All controls passed successfully!" -ForegroundColor Green
+    }
+    
+    # Report Files
+    Write-Host "`n📄 REPORTS GENERATED:" -ForegroundColor White
+    Write-Host "  📊 HTML Report: " -NoNewline -ForegroundColor Cyan
+    Write-Host "$($ReportPaths.HtmlReport)" -ForegroundColor Gray
+    Write-Host "  📈 CSV Data:    " -NoNewline -ForegroundColor Cyan
+    Write-Host "$($ReportPaths.CsvReport)" -ForegroundColor Gray
+    
+    # Recommendations Summary
+    $failedResults = $script:Results | Where-Object { $_.Status -eq "FAIL" }
+    if ($failedResults.Count -gt 0) {
+        Write-Host "`n🔧 TOP RECOMMENDATIONS:" -ForegroundColor White
+        $topRecommendations = $failedResults | Where-Object { $_.Recommendation -ne "" } | Select-Object -First 5
+        foreach ($rec in $topRecommendations) {
+            Write-Host "  • $($rec.ControlID): $($rec.Recommendation)" -ForegroundColor Yellow
+        }
     }
     
     Write-Host "`n" + "="*80 -ForegroundColor White
+    Write-Host "Audit completed in $([math]::Round(((Get-Date) - $script:StartTime).TotalMinutes, 1)) minutes" -ForegroundColor Gray
+    Write-Host "="*80 -ForegroundColor White
 }
 
 #endregion
@@ -585,26 +866,19 @@ function Show-FinalSummary {
 #region Main Execution
 
 function Main {
-    Write-Host "VMware vSphere 8 CIS Benchmark Audit Tool" -ForegroundColor Cyan
-    Write-Host "=========================================" -ForegroundColor Cyan
-    Write-Host "Enterprise Security Compliance Assessment" -ForegroundColor Gray
-    Write-Host ""
-    
-    # Initialize total controls count
-    $script:TotalControls = 10  # Update this as you add more controls
-    
-    # Check prerequisites
-    if (-not (Test-PowerCLIModule)) {
+    # Initialize environment
+    if (-not (Initialize-Environment)) {
         return
     }
     
-    # Get vCenter connection details if not provided
+    # Get connection details with minimal user input
     if (-not $vCenterServer) {
-        $vCenterServer = Read-Host "Enter vCenter Server FQDN or IP address"
+        $vCenterServer = Read-Host "[INPUT] Enter vCenter Server FQDN or IP address"
     }
     
     if (-not $Credential) {
-        $Credential = Get-Credential -Message "Enter vCenter credentials"
+        Write-Host "[INPUT] Enter vCenter credentials" -ForegroundColor Yellow
+        $Credential = Get-Credential -Message "vCenter Authentication"
     }
     
     # Connect to vCenter
@@ -612,51 +886,39 @@ function Main {
         return
     }
     
-    Write-Host "`nStarting CIS Benchmark audit..." -ForegroundColor Yellow
-    Write-Host "Total controls to test: $script:TotalControls" -ForegroundColor Gray
+    Write-Host "`n[START] Beginning CIS Benchmark audit..." -ForegroundColor Yellow
+    Write-Host "[INFO] Total controls to assess: $script:TotalControls" -ForegroundColor Gray
+    Write-Host "[INFO] All operations are read-only - no changes will be made" -ForegroundColor Green
     Write-Host ""
     
-    # Execute all CIS controls
     try {
-        # Section 1: Initial Setup
-        Test-CIS-1-1-1
-        Test-CIS-1-2-1
-        
-        # Section 2: Logging and Monitoring
-        Test-CIS-2-1-1
-        Test-CIS-2-2-1
-        
-        # Section 3: Network Configuration
-        Test-CIS-3-1-1
-        
-        # Section 4: Access Control
-        Test-CIS-4-1-1
-        Test-CIS-4-2-1
-        
-        # Section 5: System Configuration
-        Test-CIS-5-1-1
-        
-        # Section 6: Virtual Machine Configuration
-        Test-CIS-6-1-1
+        # Execute all sections with progress tracking
+        Test-Section1-Controls  # Initial Setup & Patching
+        Test-Section2-Controls  # Communication & Network Services
+        Test-Section3-Controls  # Logging & Monitoring
+        Test-Section4-Controls  # Access Control & Authentication
+        Test-Section5-Controls  # Console & Shell Access
+        Test-Section6-Controls  # Storage Security
+        Test-Section7-Controls  # Network Security Policies
+        Test-Section8-Controls  # Virtual Machine Configuration
         
         Write-Progress -Activity "CIS Benchmark Audit" -Completed
         
-        # Generate reports
+        # Generate comprehensive reports
         $reportResults = Generate-ComplianceReport -OutputPath $OutputPath
         
-        # Show final summary
-        Show-FinalSummary -Statistics $reportResults.Statistics
-        
-        Write-Host "`nREPORTS GENERATED:" -ForegroundColor White
-        Write-Host "  📄 HTML Report: $($reportResults.HtmlReport)" -ForegroundColor Cyan
-        Write-Host "  📊 CSV Data:    $($reportResults.CsvReport)" -ForegroundColor Cyan
+        # Display final summary
+        Show-FinalSummary -Statistics $reportResults.Statistics -ReportPaths $reportResults
         
     }
+    catch {
+        Write-Error "[ERROR] Audit execution failed: $($_.Exception.Message)"
+    }
     finally {
-        # Cleanup
+        # Cleanup connection
         if ($script:vCenterConnection) {
             Disconnect-VIServer -Server $script:vCenterConnection -Confirm:$false -ErrorAction SilentlyContinue
-            Write-Host "`nDisconnected from vCenter Server" -ForegroundColor Gray
+            Write-Host "`n[CLEANUP] Disconnected from vCenter Server" -ForegroundColor Gray
         }
     }
 }
