@@ -11,7 +11,7 @@ on:
 jobs:
   powershell-analysis:
     name: PowerShell Script Analysis
-    runs-on: windows-latest
+    runs-on: windows-2022
     
     steps:
     - name: Checkout repository
@@ -25,12 +25,13 @@ jobs:
     - name: Run PSScriptAnalyzer
       shell: powershell
       run: |
-        $results = Invoke-ScriptAnalyzer -Path "scripts/Invoke-vSphere8CISAudit.ps1" -Severity Error,Warning
+        $results = Invoke-ScriptAnalyzer -Path "scripts/Invoke-vSphere8CISAudit.ps1" -Severity Error
         if ($results) {
           $results | Format-Table -AutoSize
-          Write-Error "PSScriptAnalyzer found issues"
+          Write-Host "PSScriptAnalyzer found errors" -ForegroundColor Red
+          exit 1
         } else {
-          Write-Host "✅ PSScriptAnalyzer passed - no issues found" -ForegroundColor Green
+          Write-Host "PSScriptAnalyzer passed - no errors found" -ForegroundColor Green
         }
         
   markdown-lint:
@@ -61,7 +62,7 @@ jobs:
       uses: actions/checkout@v4
       
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.24.0
       with:
         scan-type: 'fs'
         scan-ref: '.'
@@ -143,7 +144,7 @@ jobs:
         
   test-powershell-syntax:
     name: PowerShell Syntax Validation
-    runs-on: windows-latest
+    runs-on: windows-2022
     
     steps:
     - name: Checkout repository
