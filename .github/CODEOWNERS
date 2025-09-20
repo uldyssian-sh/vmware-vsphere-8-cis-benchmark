@@ -1,0 +1,16 @@
+# Global code owners
+* @uldyssian-sh
+
+# PowerShell scripts
+*.ps1 @uldyssian-sh
+
+# Documentation
+*.md @uldyssian-sh
+docs/ @uldyssian-sh
+
+# GitHub workflows and configuration
+.github/ @uldyssian-sh
+
+# Security and compliance files
+SECURITY.md @uldyssian-sh
+CONTRIBUTING.md @uldyssian-sh

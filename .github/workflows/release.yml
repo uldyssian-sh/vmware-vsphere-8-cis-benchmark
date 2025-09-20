@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: VMware vSphere 8 CIS Benchmark ${{ github.ref }}
+        body: |
+          ## VMware vSphere 8 CIS Benchmark Release
+          
+          ### Features
+          - Complete CIS Benchmark coverage (106 controls)
+          - Enterprise-grade PowerShell audit script
+          - Comprehensive HTML and CSV reporting
+          - Read-only security assessment
+          
+          ### Installation
+          ```bash
+          git clone https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark.git
+          cd vmware-vsphere-8-cis-benchmark
+          ```
+          
+          ### Usage
+          ```powershell
+          .\scripts\Invoke-vSphere8CISAudit.ps1
+          ```
+          
+          See [README.md](README.md) for complete documentation.
+        draft: false
+        prerelease: false

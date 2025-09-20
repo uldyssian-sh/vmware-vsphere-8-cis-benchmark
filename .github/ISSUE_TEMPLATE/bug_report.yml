@@ -1,0 +1,48 @@
+name: Bug Report
+description: Report a bug or issue with the CIS Benchmark audit script
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please provide detailed information to help us resolve the issue.
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Describe your environment
+      placeholder: "PowerShell 5.1, VMware PowerCLI 13.0, vSphere 8.0 Update 2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Clear description of the bug
+      placeholder: Describe what happened and what you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Run script with parameters...
+        2. Connect to vCenter...
+        3. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Output
+      description: Copy and paste any error messages or logs
+      render: shell
+    validations:
+      required: false
