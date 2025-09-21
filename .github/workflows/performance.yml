@@ -28,6 +28,9 @@ jobs:
       run: |
         Write-Host "Running PowerShell performance analysis..." -ForegroundColor Cyan
         
+        # Check memory usage baseline
+        $beforeMemory = [System.GC]::GetTotalMemory($false)
+        
         # Measure script load time
         $loadTime = Measure-Command {
           . ".\scripts\Invoke-vSphere8CISAudit.ps1" -WhatIf 2>$null
@@ -35,9 +38,7 @@ jobs:
         
         Write-Host "Script load time: $($loadTime.TotalMilliseconds) ms" -ForegroundColor Green
         
-        # Check memory usage
-        $beforeMemory = [System.GC]::GetTotalMemory($false)
-        . ".\scripts\Invoke-vSphere8CISAudit.ps1" -WhatIf 2>$null
+        # Measure memory after load
         $afterMemory = [System.GC]::GetTotalMemory($true)
         $memoryUsed = ($afterMemory - $beforeMemory) / 1MB
         

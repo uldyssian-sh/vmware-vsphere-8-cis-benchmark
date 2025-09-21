@@ -22,6 +22,14 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       timeout-minutes: 10
+      continue-on-error: false
+      
+    - name: Verify Release Creation
+      if: failure()
+      run: |
+        echo "Release creation failed. Check GitHub token permissions and repository settings."
+        echo "Ensure the repository has releases enabled and the token has write permissions."
+        exit 1
       with:
         tag_name: ${{ github.ref_name }}
         name: VMware vSphere 8 CIS Benchmark ${{ github.ref_name }}

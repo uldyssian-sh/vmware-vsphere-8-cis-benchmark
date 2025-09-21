@@ -95,11 +95,10 @@ jobs:
         node-version: '20'
         
     - name: Install markdown-link-check
-      run: npm install -g markdown-link-check
+      run: npm install -g markdown-link-check@3.11.2
       
     - name: Check links in README
       run: |
-        npm install -g markdown-link-check@3.11.2
         markdown-link-check README.md --config .github/mlc_config.json
       
   validate-structure:
