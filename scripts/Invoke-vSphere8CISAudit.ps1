@@ -247,8 +247,8 @@ function Test-Section1-Controls {
     try {
         $esxiHosts = Get-VMHost
         $outdatedHosts = @()
-        foreach ($host in $esxiHosts) {
-            if ($host.Build -lt 20000000) { $outdatedHosts += $host.Name }
+        foreach ($esxiHost in $esxiHosts) {
+            if ($esxiHost.Build -lt 20000000) { $outdatedHosts += $esxiHost.Name }
         }
         if ($outdatedHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-1.1.1" -Section $section -Title "Ensure ESXi host patches are up-to-date" -Status "PASS" -Details "All ESXi hosts have recent builds"
@@ -275,15 +275,15 @@ function Test-Section1-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
+        foreach ($esxiHost in $esxiHosts) {
             try {
-                $esxcli = Get-EsxCli -VMHost $host -V2
+                $esxcli = Get-EsxCli -VMHost $esxiHost -V2
                 $acceptanceLevel = $esxcli.software.acceptance.get.Invoke()
                 if ($acceptanceLevel -notin @('VMwareCertified', 'VMwareAccepted', 'PartnerSupported')) {
-                    $nonCompliantHosts += "$($host.Name):$acceptanceLevel"
+                    $nonCompliantHosts += "$($esxiHost.Name):$acceptanceLevel"
                 }
             } catch {
-                $nonCompliantHosts += "$($host.Name):Unknown"
+                $nonCompliantHosts += "$($esxiHost.Name):Unknown"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -299,16 +299,16 @@ function Test-Section1-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithUnauthorizedModules = @()
-        foreach ($host in $esxiHosts) {
+        foreach ($esxiHost in $esxiHosts) {
             try {
-                $esxcli = Get-EsxCli -VMHost $host -V2
+                $esxcli = Get-EsxCli -VMHost $esxiHost -V2
                 $modules = $esxcli.system.module.list.Invoke()
                 $unauthorizedModules = $modules | Where-Object { $_.IsLoaded -eq $true -and $_.IsSigned -eq $false }
                 if ($unauthorizedModules) {
-                    $hostsWithUnauthorizedModules += "$($host.Name):$($unauthorizedModules.Count) unsigned modules"
+                    $hostsWithUnauthorizedModules += "$($esxiHost.Name):$($unauthorizedModules.Count) unsigned modules"
                 }
             } catch {
-                $hostsWithUnauthorizedModules += "$($host.Name):Check failed"
+                $hostsWithUnauthorizedModules += "$($esxiHost.Name):Check failed"
             }
         }
         if ($hostsWithUnauthorizedModules.Count -eq 0) {
@@ -333,15 +333,15 @@ function Test-Section1-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
+        foreach ($esxiHost in $esxiHosts) {
             try {
-                $esxcli = Get-EsxCli -VMHost $host -V2
+                $esxcli = Get-EsxCli -VMHost $esxiHost -V2
                 $imageProfile = $esxcli.software.profile.get.Invoke()
                 if ($imageProfile.AcceptanceLevel -notin @('VMwareCertified', 'VMwareAccepted', 'PartnerSupported')) {
-                    $nonCompliantHosts += "$($host.Name):$($imageProfile.AcceptanceLevel)"
+                    $nonCompliantHosts += "$($esxiHost.Name):$($imageProfile.AcceptanceLevel)"
                 }
             } catch {
-                $nonCompliantHosts += "$($host.Name):Check failed"
+                $nonCompliantHosts += "$($esxiHost.Name):Check failed"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -357,9 +357,9 @@ function Test-Section1-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsToReview = @()
-        foreach ($host in $esxiHosts) {
-            $bootType = $host.ExtensionData.Hardware.SystemInfo.Firmware
-            $hostsToReview += "$($host.Name):$bootType"
+        foreach ($esxiHost in $esxiHosts) {
+            $bootType = $esxiHost.ExtensionData.Hardware.SystemInfo.Firmware
+            $hostsToReview += "$($esxiHost.Name):$bootType"
         }
         Add-CISResult -ControlID "CIS-1.4.1" -Section $section -Title "Ensure BIOS/UEFI settings are configured securely" -Status "REVIEW" -Details "Boot types: $($hostsToReview -join ', ')" -Recommendation "Verify BIOS/UEFI settings"
     } catch {
@@ -370,14 +370,14 @@ function Test-Section1-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
+        foreach ($esxiHost in $esxiHosts) {
             try {
-                $secureBootEnabled = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Boot.SecureBoot" -ErrorAction SilentlyContinue
+                $secureBootEnabled = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Boot.SecureBoot" -ErrorAction SilentlyContinue
                 if (-not $secureBootEnabled -or $secureBootEnabled.Value -ne $true) {
-                    $nonCompliantHosts += $host.Name
+                    $nonCompliantHosts += $esxiHost.Name
                 }
             } catch {
-                $nonCompliantHosts += $host.Name
+                $nonCompliantHosts += $esxiHost.Name
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -393,10 +393,10 @@ function Test-Section1-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithDevices = @()
-        foreach ($host in $esxiHosts) {
-            $pciDevices = $host.ExtensionData.Hardware.PciDevice | Where-Object { $_.DeviceName -notmatch "VMware|Intel|Broadcom" }
+        foreach ($esxiHost in $esxiHosts) {
+            $pciDevices = $esxiHost.ExtensionData.Hardware.PciDevice | Where-Object { $_.DeviceName -notmatch "VMware|Intel|Broadcom" }
             if ($pciDevices) {
-                $hostsWithDevices += "$($host.Name):$($pciDevices.Count) unknown devices"
+                $hostsWithDevices += "$($esxiHost.Name):$($pciDevices.Count) unknown devices"
             }
         }
         if ($hostsWithDevices.Count -eq 0) {
@@ -412,11 +412,11 @@ function Test-Section1-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $ntpService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "ntpd" }
-            $ntpServers = Get-VMHostNtpServer -VMHost $host
+        foreach ($esxiHost in $esxiHosts) {
+            $ntpService = Get-VMHostService -VMHost $esxiHost | Where-Object { $_.Key -eq "ntpd" }
+            $ntpServers = Get-VMHostNtpServer -VMHost $esxiHost
             if (-not $ntpService.Running -or $ntpServers.Count -lt 2) {
-                $nonCompliantHosts += "$($host.Name):NTP servers: $($ntpServers.Count)"
+                $nonCompliantHosts += "$($esxiHost.Name):NTP servers: $($ntpServers.Count)"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -457,15 +457,15 @@ function Test-Section1-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
+        foreach ($esxiHost in $esxiHosts) {
             try {
-                $esxcli = Get-EsxCli -VMHost $host -V2
+                $esxcli = Get-EsxCli -VMHost $esxiHost -V2
                 $softwareProfile = $esxcli.software.profile.get.Invoke()
                 if ($softwareProfile.Vendor -notmatch "VMware|Dell|HPE|Cisco") {
-                    $nonCompliantHosts += "$($host.Name):$($softwareProfile.Vendor)"
+                    $nonCompliantHosts += "$($esxiHost.Name):$($softwareProfile.Vendor)"
                 }
             } catch {
-                $nonCompliantHosts += "$($host.Name):Check failed"
+                $nonCompliantHosts += "$($esxiHost.Name):Check failed"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -507,11 +507,11 @@ function Test-Section2-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $ntpService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "ntpd" }
-            $ntpServers = Get-VMHostNtpServer -VMHost $host
+        foreach ($esxiHost in $esxiHosts) {
+            $ntpService = Get-VMHostService -VMHost $esxiHost | Where-Object { $_.Key -eq "ntpd" }
+            $ntpServers = Get-VMHostNtpServer -VMHost $esxiHost
             if (-not $ntpService.Running -or $ntpServers.Count -eq 0) {
-                $nonCompliantHosts += $host.Name
+                $nonCompliantHosts += $esxiHost.Name
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -527,10 +527,10 @@ function Test-Section2-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
+        foreach ($esxiHost in $esxiHosts) {
             $firewallPolicy = Get-VMHostFirewallDefaultPolicy -VMHost $host
             if ($firewallPolicy.AllowIncoming -eq $true) {
-                $nonCompliantHosts += $host.Name
+                $nonCompliantHosts += $esxiHost.Name
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -546,10 +546,10 @@ function Test-Section2-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $mobSetting = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Config.HostAgent.plugins.solo.enableMob"
+        foreach ($esxiHost in $esxiHosts) {
+            $mobSetting = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Config.HostAgent.plugins.solo.enableMob"
             if ($mobSetting.Value -eq $true) {
-                $nonCompliantHosts += $host.Name
+                $nonCompliantHosts += $esxiHost.Name
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -565,11 +565,11 @@ function Test-Section2-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $ntpServers = Get-VMHostNtpServer -VMHost $host
+        foreach ($esxiHost in $esxiHosts) {
+            $ntpServers = Get-VMHostNtpServer -VMHost $esxiHost
             $authoritativeServers = $ntpServers | Where-Object { $_ -match "pool\.ntp\.org|time\.nist\.gov|time\.windows\.com" }
             if ($authoritativeServers.Count -eq 0) {
-                $nonCompliantHosts += "$($host.Name):$($ntpServers -join ',')"
+                $nonCompliantHosts += "$($esxiHost.Name):$($ntpServers -join ',')"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -585,12 +585,12 @@ function Test-Section2-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $firewallRules = Get-VMHostFirewallException -VMHost $host
+        foreach ($esxiHost in $esxiHosts) {
+            $firewallRules = Get-VMHostFirewallException -VMHost $esxiHost
             $enabledRules = $firewallRules | Where-Object { $_.Enabled -eq $true }
             $unnecessaryRules = $enabledRules | Where-Object { $_.Name -match "CIM|SNMP|SSH|Telnet" -and $_.Enabled -eq $true }
             if ($unnecessaryRules.Count -gt 0) {
-                $nonCompliantHosts += "$($host.Name):$($unnecessaryRules.Count) unnecessary rules"
+                $nonCompliantHosts += "$($esxiHost.Name):$($unnecessaryRules.Count) unnecessary rules"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -606,11 +606,11 @@ function Test-Section2-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $firewallRules = Get-VMHostFirewallException -VMHost $host | Where-Object { $_.Enabled -eq $true }
+        foreach ($esxiHost in $esxiHosts) {
+            $firewallRules = Get-VMHostFirewallException -VMHost $esxiHost | Where-Object { $_.Enabled -eq $true }
             $openRules = $firewallRules | Where-Object { $_.AllowedHosts.AllIp -eq $true }
             if ($openRules.Count -gt 0) {
-                $nonCompliantHosts += "$($host.Name):$($openRules.Count) open rules"
+                $nonCompliantHosts += "$($esxiHost.Name):$($openRules.Count) open rules"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -626,10 +626,10 @@ function Test-Section2-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithSelfSigned = @()
-        foreach ($host in $esxiHosts) {
-            $cert = Get-VMHostCertificate -VMHost $host
+        foreach ($esxiHost in $esxiHosts) {
+            $cert = Get-VMHostCertificate -VMHost $esxiHost
             if ($cert.Issuer -eq $cert.Subject -or $cert.Issuer -match "VMware|localhost") {
-                $hostsWithSelfSigned += $host.Name
+                $hostsWithSelfSigned += $esxiHost.Name
             }
         }
         if ($hostsWithSelfSigned.Count -eq 0) {
@@ -645,10 +645,10 @@ function Test-Section2-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithExpiredCerts = @()
-        foreach ($host in $esxiHosts) {
-            $cert = Get-VMHostCertificate -VMHost $host
+        foreach ($esxiHost in $esxiHosts) {
+            $cert = Get-VMHostCertificate -VMHost $esxiHost
             if ($cert.NotAfter -lt (Get-Date)) {
-                $hostsWithExpiredCerts += "$($host.Name):Expires $($cert.NotAfter)"
+                $hostsWithExpiredCerts += "$($esxiHost.Name):Expires $($cert.NotAfter)"
             }
         }
         if ($hostsWithExpiredCerts.Count -eq 0) {
@@ -664,11 +664,11 @@ function Test-Section2-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
+        foreach ($esxiHost in $esxiHosts) {
             $snmpConfig = Get-VMHostSnmp -VMHost $host
             if ($snmpConfig.Enabled -eq $true) {
                 if ($snmpConfig.ReadOnlyCommunity -eq "public" -or [string]::IsNullOrEmpty($snmpConfig.ReadOnlyCommunity)) {
-                    $nonCompliantHosts += "$($host.Name):Weak community string"
+                    $nonCompliantHosts += "$($esxiHost.Name):Weak community string"
                 }
             }
         }
@@ -685,10 +685,10 @@ function Test-Section2-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $dvFilterConfig = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Net.DVFilterBindIpAddress" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $dvFilterConfig = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Net.DVFilterBindIpAddress" -ErrorAction SilentlyContinue
             if ($dvFilterConfig -and $dvFilterConfig.Value -eq "0.0.0.0") {
-                $nonCompliantHosts += $host.Name
+                $nonCompliantHosts += $esxiHost.Name
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -704,10 +704,10 @@ function Test-Section2-Controls {
     try {
         $esxiHosts = Get-VMHost
         $adJoinedHosts = @()
-        foreach ($host in $esxiHosts) {
-            $adConfig = Get-VMHostAuthentication -VMHost $host
+        foreach ($esxiHost in $esxiHosts) {
+            $adConfig = Get-VMHostAuthentication -VMHost $esxiHost
             if ($adConfig.Domain -and $adConfig.Domain -ne "") {
-                $adJoinedHosts += "$($host.Name):$($adConfig.Domain)"
+                $adJoinedHosts += "$($esxiHost.Name):$($adConfig.Domain)"
             }
         }
         if ($adJoinedHosts.Count -eq 0) {
@@ -750,10 +750,10 @@ function Test-Section3-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $logDir = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logDir"
+        foreach ($esxiHost in $esxiHosts) {
+            $logDir = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logDir"
             if ([string]::IsNullOrWhiteSpace($logDir.Value)) {
-                $nonCompliantHosts += $host.Name
+                $nonCompliantHosts += $esxiHost.Name
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -769,10 +769,10 @@ function Test-Section3-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $logHost = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logHost"
+        foreach ($esxiHost in $esxiHosts) {
+            $logHost = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logHost"
             if ([string]::IsNullOrWhiteSpace($logHost.Value)) {
-                $nonCompliantHosts += $host.Name
+                $nonCompliantHosts += $esxiHost.Name
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -788,10 +788,10 @@ function Test-Section3-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $dumpConfig = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Misc.CoreDumpPartition" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $dumpConfig = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Misc.CoreDumpPartition" -ErrorAction SilentlyContinue
             if (-not $dumpConfig -or [string]::IsNullOrWhiteSpace($dumpConfig.Value)) {
-                $nonCompliantHosts += $host.Name
+                $nonCompliantHosts += $esxiHost.Name
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -807,11 +807,11 @@ function Test-Section3-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $logRotate = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logDirUnique" -ErrorAction SilentlyContinue
-            $logSize = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logSize" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $logRotate = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logDirUnique" -ErrorAction SilentlyContinue
+            $logSize = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logSize" -ErrorAction SilentlyContinue
             if (-not $logRotate -or $logRotate.Value -ne $true -or -not $logSize -or [int]$logSize.Value -eq 0) {
-                $nonCompliantHosts += "$($host.Name):Rotate=$($logRotate.Value),Size=$($logSize.Value)"
+                $nonCompliantHosts += "$($esxiHost.Name):Rotate=$($logRotate.Value),Size=$($logSize.Value)"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -853,10 +853,10 @@ function Test-Section3-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $auditRecord = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Security.AuditRecord" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $auditRecord = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Security.AuditRecord" -ErrorAction SilentlyContinue
             if (-not $auditRecord -or $auditRecord.Value -ne $true) {
-                $nonCompliantHosts += $host.Name
+                $nonCompliantHosts += $esxiHost.Name
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -872,8 +872,8 @@ function Test-Section3-Controls {
     try {
         $esxiHosts = Get-VMHost
         $protectedHosts = 0
-        foreach ($host in $esxiHosts) {
-            $logDir = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logDir" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $logDir = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logDir" -ErrorAction SilentlyContinue
             if ($logDir -and $logDir.Value -match "\[.*\]") {
                 $protectedHosts++
             }
@@ -891,11 +891,11 @@ function Test-Section3-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithCorrelation = @()
-        foreach ($host in $esxiHosts) {
-            $logHost = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logHost" -ErrorAction SilentlyContinue
-            $logDir = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logDir" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $logHost = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logHost" -ErrorAction SilentlyContinue
+            $logDir = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logDir" -ErrorAction SilentlyContinue
             if (($logHost -and $logHost.Value -ne "") -or ($logDir -and $logDir.Value -ne "")) {
-                $hostsWithCorrelation += $host.Name
+                $hostsWithCorrelation += $esxiHost.Name
             }
         }
         if ($hostsWithCorrelation.Count -eq $esxiHosts.Count) {
@@ -920,10 +920,10 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $sshEnabledHosts = @()
-        foreach ($host in $esxiHosts) {
-            $sshService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "TSM-SSH" }
+        foreach ($esxiHost in $esxiHosts) {
+            $sshService = Get-VMHostService -VMHost $esxiHost | Where-Object { $_.Key -eq "TSM-SSH" }
             if ($sshService.Running -eq $true) {
-                $sshEnabledHosts += $host.Name
+                $sshEnabledHosts += $esxiHost.Name
             }
         }
         if ($sshEnabledHosts.Count -eq 0) {
@@ -939,10 +939,10 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $shellEnabledHosts = @()
-        foreach ($host in $esxiHosts) {
-            $shellService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "TSM" }
+        foreach ($esxiHost in $esxiHosts) {
+            $shellService = Get-VMHostService -VMHost $esxiHost | Where-Object { $_.Key -eq "TSM" }
             if ($shellService.Running -eq $true) {
-                $shellEnabledHosts += $host.Name
+                $shellEnabledHosts += $esxiHost.Name
             }
         }
         if ($shellEnabledHosts.Count -eq 0) {
@@ -958,12 +958,12 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $sshHostKeyCheck = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.ESXiShellInteractiveTimeOut" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $sshHostKeyCheck = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.ESXiShellInteractiveTimeOut" -ErrorAction SilentlyContinue
             # SSH host key checking is typically enabled by default, checking SSH service status
-            $sshService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "TSM-SSH" }
+            $sshService = Get-VMHostService -VMHost $esxiHost | Where-Object { $_.Key -eq "TSM-SSH" }
             if ($sshService.Running -eq $true) {
-                $nonCompliantHosts += "$($host.Name):SSH enabled"
+                $nonCompliantHosts += "$($esxiHost.Name):SSH enabled"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -979,10 +979,10 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $sshEnabledHosts = @()
-        foreach ($host in $esxiHosts) {
-            $sshService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "TSM-SSH" }
+        foreach ($esxiHost in $esxiHosts) {
+            $sshService = Get-VMHostService -VMHost $esxiHost | Where-Object { $_.Key -eq "TSM-SSH" }
             if ($sshService.Running -eq $true) {
-                $sshEnabledHosts += $host.Name
+                $sshEnabledHosts += $esxiHost.Name
             }
         }
         if ($sshEnabledHosts.Count -eq 0) {
@@ -998,10 +998,10 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $sshTimeout = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.ESXiShellInteractiveTimeOut" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $sshTimeout = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.ESXiShellInteractiveTimeOut" -ErrorAction SilentlyContinue
             if ($sshTimeout -and [int]$sshTimeout.Value -gt 600) {
-                $nonCompliantHosts += "$($host.Name):$($sshTimeout.Value)s"
+                $nonCompliantHosts += "$($esxiHost.Name):$($sshTimeout.Value)s"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -1017,10 +1017,10 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $sshEnabledHosts = @()
-        foreach ($host in $esxiHosts) {
-            $sshService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "TSM-SSH" }
+        foreach ($esxiHost in $esxiHosts) {
+            $sshService = Get-VMHostService -VMHost $esxiHost | Where-Object { $_.Key -eq "TSM-SSH" }
             if ($sshService.Running -eq $true) {
-                $sshEnabledHosts += $host.Name
+                $sshEnabledHosts += $esxiHost.Name
             }
         }
         if ($sshEnabledHosts.Count -eq 0) {
@@ -1036,10 +1036,10 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $passwordPolicy = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Security.PasswordQualityControl" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $passwordPolicy = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Security.PasswordQualityControl" -ErrorAction SilentlyContinue
             if (-not $passwordPolicy -or $passwordPolicy.Value -notmatch "similar=deny|retry=3") {
-                $nonCompliantHosts += $host.Name
+                $nonCompliantHosts += $esxiHost.Name
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -1055,10 +1055,10 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $passwordHistory = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Security.PasswordHistory" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $passwordHistory = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Security.PasswordHistory" -ErrorAction SilentlyContinue
             if (-not $passwordHistory -or [int]$passwordHistory.Value -lt 5) {
-                $nonCompliantHosts += "$($host.Name):$($passwordHistory.Value)"
+                $nonCompliantHosts += "$($esxiHost.Name):$($passwordHistory.Value)"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -1074,10 +1074,10 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $accountLockout = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Security.AccountLockFailures" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $accountLockout = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Security.AccountLockFailures" -ErrorAction SilentlyContinue
             if (-not $accountLockout -or [int]$accountLockout.Value -eq 0 -or [int]$accountLockout.Value -gt 5) {
-                $nonCompliantHosts += "$($host.Name):$($accountLockout.Value)"
+                $nonCompliantHosts += "$($esxiHost.Name):$($accountLockout.Value)"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -1094,12 +1094,12 @@ function Test-Section4-Controls {
         $esxiHosts = Get-VMHost
         $adJoinedHosts = @()
         $nonAdHosts = @()
-        foreach ($host in $esxiHosts) {
-            $adConfig = Get-VMHostAuthentication -VMHost $host
+        foreach ($esxiHost in $esxiHosts) {
+            $adConfig = Get-VMHostAuthentication -VMHost $esxiHost
             if ($adConfig.Domain -and $adConfig.Domain -ne "") {
-                $adJoinedHosts += "$($host.Name):$($adConfig.Domain)"
+                $adJoinedHosts += "$($esxiHost.Name):$($adConfig.Domain)"
             } else {
-                $nonAdHosts += $host.Name
+                $nonAdHosts += $esxiHost.Name
             }
         }
         if ($nonAdHosts.Count -eq 0) {
@@ -1115,10 +1115,10 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsToReview = @()
-        foreach ($host in $esxiHosts) {
-            $adConfig = Get-VMHostAuthentication -VMHost $host
+        foreach ($esxiHost in $esxiHosts) {
+            $adConfig = Get-VMHostAuthentication -VMHost $esxiHost
             if ($adConfig.Domain -and $adConfig.Domain -ne "") {
-                $hostsToReview += "$($host.Name):$($adConfig.Domain)"
+                $hostsToReview += "$($esxiHost.Name):$($adConfig.Domain)"
             }
         }
         if ($hostsToReview.Count -eq 0) {
@@ -1134,12 +1134,12 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithExceptions = @()
-        foreach ($host in $esxiHosts) {
-            $lockdownMode = $host.ExtensionData.Config.LockdownMode
+        foreach ($esxiHost in $esxiHosts) {
+            $lockdownMode = $esxiHost.ExtensionData.Config.LockdownMode
             if ($lockdownMode -ne "lockdownDisabled") {
-                $exceptionUsers = $host.ExtensionData.Config.AdminDisabled
+                $exceptionUsers = $esxiHost.ExtensionData.Config.AdminDisabled
                 if ($exceptionUsers -and $exceptionUsers.Count -gt 0) {
-                    $hostsWithExceptions += "$($host.Name):$($exceptionUsers.Count) exceptions"
+                    $hostsWithExceptions += "$($esxiHost.Name):$($exceptionUsers.Count) exceptions"
                 }
             }
         }
@@ -1190,11 +1190,11 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithLocalUsers = @()
-        foreach ($host in $esxiHosts) {
-            $localUsers = Get-VMHostAccount -VMHost $host -User
+        foreach ($esxiHost in $esxiHosts) {
+            $localUsers = Get-VMHostAccount -VMHost $esxiHost -User
             $nonSystemUsers = $localUsers | Where-Object { $_.Id -notmatch "root|dcui" }
             if ($nonSystemUsers.Count -gt 0) {
-                $hostsWithLocalUsers += "$($host.Name):$($nonSystemUsers.Count) local users"
+                $hostsWithLocalUsers += "$($esxiHost.Name):$($nonSystemUsers.Count) local users"
             }
         }
         if ($hostsWithLocalUsers.Count -eq 0) {
@@ -1210,10 +1210,10 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithWeakRoot = @()
-        foreach ($host in $esxiHosts) {
-            $rootAccount = Get-VMHostAccount -VMHost $host -User | Where-Object { $_.Id -eq "root" }
+        foreach ($esxiHost in $esxiHosts) {
+            $rootAccount = Get-VMHostAccount -VMHost $esxiHost -User | Where-Object { $_.Id -eq "root" }
             if ($rootAccount -and $rootAccount.Description -eq "") {
-                $hostsWithWeakRoot += $host.Name
+                $hostsWithWeakRoot += $esxiHost.Name
             }
         }
         if ($hostsWithWeakRoot.Count -eq 0) {
@@ -1229,10 +1229,10 @@ function Test-Section4-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithCertAuth = @()
-        foreach ($host in $esxiHosts) {
-            $certConfig = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.ESXiVPsDisabledProtocols" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $certConfig = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.ESXiVPsDisabledProtocols" -ErrorAction SilentlyContinue
             if ($certConfig -and $certConfig.Value -match "sslv3|tlsv1") {
-                $hostsWithCertAuth += $host.Name
+                $hostsWithCertAuth += $esxiHost.Name
             }
         }
         Add-CISResult -ControlID "CIS-4.6.1" -Section $section -Title "Ensure certificate-based authentication is used" -Status "REVIEW" -Details "Certificate authentication configuration" -Recommendation "Configure certificate auth"
@@ -1265,10 +1265,10 @@ function Test-Section5-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $dcuiTimeout = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.DcuiTimeOut"
+        foreach ($esxiHost in $esxiHosts) {
+            $dcuiTimeout = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.DcuiTimeOut"
             if ([int]$dcuiTimeout.Value -lt 600) {
-                $nonCompliantHosts += "$($host.Name):$($dcuiTimeout.Value)"
+                $nonCompliantHosts += "$($esxiHost.Name):$($dcuiTimeout.Value)"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -1284,10 +1284,10 @@ function Test-Section5-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $lockdownMode = $host.ExtensionData.Config.LockdownMode
+        foreach ($esxiHost in $esxiHosts) {
+            $lockdownMode = $esxiHost.ExtensionData.Config.LockdownMode
             if ($lockdownMode -eq "lockdownDisabled") {
-                $nonCompliantHosts += $host.Name
+                $nonCompliantHosts += $esxiHost.Name
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -1303,10 +1303,10 @@ function Test-Section5-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $interactiveTimeout = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.ESXiShellInteractiveTimeOut"
+        foreach ($esxiHost in $esxiHosts) {
+            $interactiveTimeout = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.ESXiShellInteractiveTimeOut"
             if ([int]$interactiveTimeout.Value -eq 0 -or [int]$interactiveTimeout.Value -gt 600) {
-                $nonCompliantHosts += "$($host.Name):$($interactiveTimeout.Value)s"
+                $nonCompliantHosts += "$($esxiHost.Name):$($interactiveTimeout.Value)s"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -1322,10 +1322,10 @@ function Test-Section5-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $shellTimeout = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.ESXiShellTimeOut"
+        foreach ($esxiHost in $esxiHosts) {
+            $shellTimeout = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.ESXiShellTimeOut"
             if ([int]$shellTimeout.Value -eq 0 -or [int]$shellTimeout.Value -gt 3600) {
-                $nonCompliantHosts += "$($host.Name):$($shellTimeout.Value)s"
+                $nonCompliantHosts += "$($esxiHost.Name):$($shellTimeout.Value)s"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -1341,11 +1341,11 @@ function Test-Section5-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithKeys = @()
-        foreach ($host in $esxiHosts) {
+        foreach ($esxiHost in $esxiHosts) {
             # This requires SSH access to check, so we'll check if SSH is enabled
-            $sshService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "TSM-SSH" }
+            $sshService = Get-VMHostService -VMHost $esxiHost | Where-Object { $_.Key -eq "TSM-SSH" }
             if ($sshService.Running -eq $true) {
-                $hostsWithKeys += "$($host.Name):SSH enabled"
+                $hostsWithKeys += "$($esxiHost.Name):SSH enabled"
             }
         }
         if ($hostsWithKeys.Count -eq 0) {
@@ -1361,10 +1361,10 @@ function Test-Section5-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $lockdownMode = $host.ExtensionData.Config.LockdownMode
+        foreach ($esxiHost in $esxiHosts) {
+            $lockdownMode = $esxiHost.ExtensionData.Config.LockdownMode
             if ($lockdownMode -ne "lockdownStrict") {
-                $nonCompliantHosts += "$($host.Name):$lockdownMode"
+                $nonCompliantHosts += "$($esxiHost.Name):$lockdownMode"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -1380,12 +1380,12 @@ function Test-Section5-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithoutTrustedUsers = @()
-        foreach ($host in $esxiHosts) {
-            $lockdownMode = $host.ExtensionData.Config.LockdownMode
+        foreach ($esxiHost in $esxiHosts) {
+            $lockdownMode = $esxiHost.ExtensionData.Config.LockdownMode
             if ($lockdownMode -ne "lockdownDisabled") {
-                $trustedUsers = $host.ExtensionData.Config.AdminDisabled
+                $trustedUsers = $esxiHost.ExtensionData.Config.AdminDisabled
                 if (-not $trustedUsers -or $trustedUsers.Count -eq 0) {
-                    $hostsWithoutTrustedUsers += $host.Name
+                    $hostsWithoutTrustedUsers += $esxiHost.Name
                 }
             }
         }
@@ -1402,12 +1402,12 @@ function Test-Section5-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
-            $cimService = Get-VMHostService -VMHost $host | Where-Object { $_.Key -eq "sfcbd-watchdog" }
+        foreach ($esxiHost in $esxiHosts) {
+            $cimService = Get-VMHostService -VMHost $esxiHost | Where-Object { $_.Key -eq "sfcbd-watchdog" }
             if ($cimService.Running -eq $true) {
-                $firewallRules = Get-VMHostFirewallException -VMHost $host | Where-Object { $_.Name -match "CIM" -and $_.Enabled -eq $true }
+                $firewallRules = Get-VMHostFirewallException -VMHost $esxiHost | Where-Object { $_.Name -match "CIM" -and $_.Enabled -eq $true }
                 if ($firewallRules) {
-                    $nonCompliantHosts += "$($host.Name):CIM enabled"
+                    $nonCompliantHosts += "$($esxiHost.Name):CIM enabled"
                 }
             }
         }
@@ -1424,10 +1424,10 @@ function Test-Section5-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsToReview = @()
-        foreach ($host in $esxiHosts) {
-            $configFiles = Get-VMHostAdvancedConfiguration -VMHost $host -Name "UserVars.SuppressShellWarning" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $configFiles = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.SuppressShellWarning" -ErrorAction SilentlyContinue
             if ($configFiles -and $configFiles.Value -eq 1) {
-                $hostsToReview += "$($host.Name):Shell warning suppressed"
+                $hostsToReview += "$($esxiHost.Name):Shell warning suppressed"
             }
         }
         if ($hostsToReview.Count -eq 0) {
@@ -1443,10 +1443,10 @@ function Test-Section5-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithIssues = @()
-        foreach ($host in $esxiHosts) {
-            $memReservation = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Mem.MemMinFreePct" -ErrorAction SilentlyContinue
+        foreach ($esxiHost in $esxiHosts) {
+            $memReservation = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Mem.MemMinFreePct" -ErrorAction SilentlyContinue
             if ($memReservation -and [int]$memReservation.Value -lt 6) {
-                $hostsWithIssues += "$($host.Name):MemMinFreePct=$($memReservation.Value)"
+                $hostsWithIssues += "$($esxiHost.Name):MemMinFreePct=$($memReservation.Value)"
             }
         }
         if ($hostsWithIssues.Count -eq 0) {
@@ -1489,14 +1489,14 @@ function Test-Section6-Controls {
         $esxiHosts = Get-VMHost
         $iscsiHosts = @()
         $nonCompliantHosts = @()
-        foreach ($host in $esxiHosts) {
+        foreach ($esxiHost in $esxiHosts) {
             $iscsiHba = Get-VMHostHba -VMHost $host -Type iSCSI -ErrorAction SilentlyContinue
             if ($iscsiHba) {
-                $iscsiHosts += $host.Name
+                $iscsiHosts += $esxiHost.Name
                 foreach ($hba in $iscsiHba) {
                     $chapConfig = $hba.AuthenticationProperties
                     if (-not $chapConfig.ChapType -or $chapConfig.ChapType -ne "bidirectional") {
-                        $nonCompliantHosts += "$($host.Name):$($hba.Device)"
+                        $nonCompliantHosts += "$($esxiHost.Name):$($hba.Device)"
                     }
                 }
             }
@@ -1517,13 +1517,13 @@ function Test-Section6-Controls {
         $esxiHosts = Get-VMHost
         $chapSecrets = @{}
         $duplicateSecrets = @()
-        foreach ($host in $esxiHosts) {
+        foreach ($esxiHost in $esxiHosts) {
             $iscsiHba = Get-VMHostHba -VMHost $host -Type iSCSI -ErrorAction SilentlyContinue
             if ($iscsiHba) {
                 foreach ($hba in $iscsiHba) {
                     $chapConfig = $hba.AuthenticationProperties
                     if ($chapConfig.ChapName) {
-                        $secretKey = "$($chapConfig.ChapName):$($host.Name)"
+                        $secretKey = "$($chapConfig.ChapName):$($esxiHost.Name)"
                         if ($chapSecrets.ContainsKey($chapConfig.ChapName)) {
                             $duplicateSecrets += $secretKey
                         } else {
@@ -1548,12 +1548,12 @@ function Test-Section6-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithMultiplePaths = @()
-        foreach ($host in $esxiHosts) {
+        foreach ($esxiHost in $esxiHosts) {
             $scsiLuns = Get-ScsiLun -VMHost $host -LunType disk -ErrorAction SilentlyContinue
             foreach ($lun in $scsiLuns) {
                 $paths = Get-ScsiLunPath -ScsiLun $lun
                 if ($paths.Count -gt 1) {
-                    $hostsWithMultiplePaths += "$($host.Name):$($lun.CanonicalName):$($paths.Count) paths"
+                    $hostsWithMultiplePaths += "$($esxiHost.Name):$($lun.CanonicalName):$($paths.Count) paths"
                 }
             }
         }
@@ -1621,12 +1621,12 @@ function Test-Section7-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantSwitches = @()
-        foreach ($host in $esxiHosts) {
-            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard
+        foreach ($esxiHost in $esxiHosts) {
+            $vSwitches = Get-VirtualSwitch -VMHost $esxiHost -Standard
             foreach ($vSwitch in $vSwitches) {
                 $secPolicy = Get-SecurityPolicy -VirtualSwitch $vSwitch
                 if ($secPolicy.AllowPromiscuous -eq $true -or $secPolicy.ForgedTransmits -eq $true -or $secPolicy.MacChanges -eq $true) {
-                    $nonCompliantSwitches += "$($host.Name):$($vSwitch.Name)"
+                    $nonCompliantSwitches += "$($esxiHost.Name):$($vSwitch.Name)"
                 }
             }
         }
@@ -1661,12 +1661,12 @@ function Test-Section7-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantSwitches = @()
-        foreach ($host in $esxiHosts) {
-            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard
+        foreach ($esxiHost in $esxiHosts) {
+            $vSwitches = Get-VirtualSwitch -VMHost $esxiHost -Standard
             foreach ($vSwitch in $vSwitches) {
                 $secPolicy = Get-SecurityPolicy -VirtualSwitch $vSwitch
                 if ($secPolicy.ForgedTransmits -eq $true) {
-                    $nonCompliantSwitches += "$($host.Name):$($vSwitch.Name)"
+                    $nonCompliantSwitches += "$($esxiHost.Name):$($vSwitch.Name)"
                 }
             }
         }
@@ -1683,12 +1683,12 @@ function Test-Section7-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantSwitches = @()
-        foreach ($host in $esxiHosts) {
-            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard
+        foreach ($esxiHost in $esxiHosts) {
+            $vSwitches = Get-VirtualSwitch -VMHost $esxiHost -Standard
             foreach ($vSwitch in $vSwitches) {
                 $secPolicy = Get-SecurityPolicy -VirtualSwitch $vSwitch
                 if ($secPolicy.MacChanges -eq $true) {
-                    $nonCompliantSwitches += "$($host.Name):$($vSwitch.Name)"
+                    $nonCompliantSwitches += "$($esxiHost.Name):$($vSwitch.Name)"
                 }
             }
         }
@@ -1705,12 +1705,12 @@ function Test-Section7-Controls {
     try {
         $esxiHosts = Get-VMHost
         $nonCompliantSwitches = @()
-        foreach ($host in $esxiHosts) {
-            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard
+        foreach ($esxiHost in $esxiHosts) {
+            $vSwitches = Get-VirtualSwitch -VMHost $esxiHost -Standard
             foreach ($vSwitch in $vSwitches) {
                 $secPolicy = Get-SecurityPolicy -VirtualSwitch $vSwitch
                 if ($secPolicy.AllowPromiscuous -eq $true) {
-                    $nonCompliantSwitches += "$($host.Name):$($vSwitch.Name)"
+                    $nonCompliantSwitches += "$($esxiHost.Name):$($vSwitch.Name)"
                 }
             }
         }
@@ -1815,8 +1815,8 @@ function Test-Section7-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithMultipleNetworks = @()
-        foreach ($host in $esxiHosts) {
-            $vmkernelPorts = Get-VMHostNetworkAdapter -VMHost $host -VMKernel
+        foreach ($esxiHost in $esxiHosts) {
+            $vmkernelPorts = Get-VMHostNetworkAdapter -VMHost $esxiHost -VMKernel
             $managementPorts = $vmkernelPorts | Where-Object { $_.ManagementTrafficEnabled -eq $true }
             $vMotionPorts = $vmkernelPorts | Where-Object { $_.VMotionEnabled -eq $true }
             if ($managementPorts.Count -gt 0 -and $vMotionPorts.Count -gt 0) {
@@ -1831,7 +1831,7 @@ function Test-Section7-Controls {
                     if ($sameNetwork) { break }
                 }
                 if ($sameNetwork) {
-                    $hostsWithMultipleNetworks += "$($host.Name):Mixed traffic"
+                    $hostsWithMultipleNetworks += "$($esxiHost.Name):Mixed traffic"
                 }
             }
         }
@@ -1848,12 +1848,12 @@ function Test-Section7-Controls {
     try {
         $esxiHosts = Get-VMHost
         $hostsWithoutRedundancy = @()
-        foreach ($host in $esxiHosts) {
-            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard
+        foreach ($esxiHost in $esxiHosts) {
+            $vSwitches = Get-VirtualSwitch -VMHost $esxiHost -Standard
             foreach ($vSwitch in $vSwitches) {
                 $nics = $vSwitch.Nic
                 if ($nics.Count -lt 2) {
-                    $hostsWithoutRedundancy += "$($host.Name):$($vSwitch.Name):$($nics.Count) NIC(s)"
+                    $hostsWithoutRedundancy += "$($esxiHost.Name):$($vSwitch.Name):$($nics.Count) NIC(s)"
                 }
             }
         }
@@ -1871,15 +1871,15 @@ function Test-Section7-Controls {
         $esxiHosts = Get-VMHost
         $inconsistentPolicies = @()
         $baselinePolicy = $null
-        foreach ($host in $esxiHosts) {
-            $vSwitches = Get-VirtualSwitch -VMHost $host -Standard
+        foreach ($esxiHost in $esxiHosts) {
+            $vSwitches = Get-VirtualSwitch -VMHost $esxiHost -Standard
             foreach ($vSwitch in $vSwitches) {
                 $secPolicy = Get-SecurityPolicy -VirtualSwitch $vSwitch
                 $policyString = "$($secPolicy.AllowPromiscuous):$($secPolicy.ForgedTransmits):$($secPolicy.MacChanges)"
                 if (-not $baselinePolicy) {
                     $baselinePolicy = $policyString
                 } elseif ($baselinePolicy -ne $policyString) {
-                    $inconsistentPolicies += "$($host.Name):$($vSwitch.Name):$policyString"
+                    $inconsistentPolicies += "$($esxiHost.Name):$($vSwitch.Name):$policyString"
                 }
             }
         }
