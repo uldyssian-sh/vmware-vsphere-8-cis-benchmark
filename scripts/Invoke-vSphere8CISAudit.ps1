@@ -253,7 +253,7 @@ function Test-Section1-Controls {
         if ($outdatedHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-1.1.1" -Section $section -Title "Ensure ESXi host patches are up-to-date" -Status "PASS" -Details "All ESXi hosts have recent builds"
         } else {
-            Add-CISResult -ControlID "CIS-1.1.1" -Section $section -Title "Ensure ESXi host patches are up-to-date" -Status "FAIL" -Details "Outdated hosts: $($outdatedHosts -join ', ')" -Recommendation "Update ESXi hosts to latest patches"
+            Add-CISResult -ControlID "CIS-1.1.1" -Section $section -Title "Ensure ESXi host patches are up-to-date" -Status "FAIL" -Details "Outdated hosts: $($outdatedHosts -join ', ')" -Recommendation "Update ESXi patches"
         }
     } catch {
         Add-CISResult -ControlID "CIS-1.1.1" -Section $section -Title "Ensure ESXi host patches are up-to-date" -Status "ERROR" -Details $_.Exception.Message
@@ -265,7 +265,7 @@ function Test-Section1-Controls {
         if ($vcenterInfo.Version -match "^8\." -and $vcenterInfo.Build -gt 20000000) {
             Add-CISResult -ControlID "CIS-1.1.2" -Section $section -Title "Ensure vCenter Server patches are up-to-date" -Status "PASS" -Details "vCenter version: $($vcenterInfo.Version), build: $($vcenterInfo.Build)"
         } else {
-            Add-CISResult -ControlID "CIS-1.1.2" -Section $section -Title "Ensure vCenter Server patches are up-to-date" -Status "FAIL" -Details "vCenter may need updates" -Recommendation "Update vCenter to latest version"
+            Add-CISResult -ControlID "CIS-1.1.2" -Section $section -Title "Ensure vCenter Server patches are up-to-date" -Status "FAIL" -Details "vCenter may need updates" -Recommendation "Update vCenter"
         }
     } catch {
         Add-CISResult -ControlID "CIS-1.1.2" -Section $section -Title "Ensure vCenter Server patches are up-to-date" -Status "ERROR" -Details $_.Exception.Message
@@ -289,7 +289,7 @@ function Test-Section1-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-1.2.1" -Section $section -Title "Ensure VIB acceptance level is configured properly" -Status "PASS" -Details "All hosts have proper acceptance levels"
         } else {
-            Add-CISResult -ControlID "CIS-1.2.1" -Section $section -Title "Ensure VIB acceptance level is configured properly" -Status "FAIL" -Details "Non-compliant hosts: $($nonCompliantHosts -join ', ')" -Recommendation "Set acceptance level to VMwareAccepted or PartnerSupported"
+            Add-CISResult -ControlID "CIS-1.2.1" -Section $section -Title "Ensure VIB acceptance level is configured properly" -Status "FAIL" -Details "Non-compliant hosts: $($nonCompliantHosts -join ', ')" -Recommendation "Set VIB acceptance level"
         }
     } catch {
         Add-CISResult -ControlID "CIS-1.2.1" -Section $section -Title "Ensure VIB acceptance level is configured properly" -Status "ERROR" -Details $_.Exception.Message
@@ -314,7 +314,7 @@ function Test-Section1-Controls {
         if ($hostsWithUnauthorizedModules.Count -eq 0) {
             Add-CISResult -ControlID "CIS-1.2.2" -Section $section -Title "Ensure no unauthorized kernel modules are loaded" -Status "PASS" -Details "No unauthorized modules found"
         } else {
-            Add-CISResult -ControlID "CIS-1.2.2" -Section $section -Title "Ensure no unauthorized kernel modules are loaded" -Status "FAIL" -Details "Hosts with unauthorized modules: $($hostsWithUnauthorizedModules -join ', ')" -Recommendation "Remove unauthorized kernel modules"
+            Add-CISResult -ControlID "CIS-1.2.2" -Section $section -Title "Ensure no unauthorized kernel modules are loaded" -Status "FAIL" -Details "Hosts with unauthorized modules: $($hostsWithUnauthorizedModules -join ', ')" -Recommendation "Remove unauthorized modules"
         }
     } catch {
         Add-CISResult -ControlID "CIS-1.2.2" -Section $section -Title "Ensure no unauthorized kernel modules are loaded" -Status "ERROR" -Details $_.Exception.Message
@@ -323,7 +323,7 @@ function Test-Section1-Controls {
     # CIS-1.3.1: Ensure default salt is configured properly
     try {
         foreach ($host in Get-VMHost) {
-            Add-CISResult -ControlID "CIS-1.3.1" -Section $section -Title "Ensure default salt is configured properly" -Status "REVIEW" -Details "Manual verification required" -Recommendation "Verify default salt configuration manually"
+            Add-CISResult -ControlID "CIS-1.3.1" -Section $section -Title "Ensure default salt is configured properly" -Status "REVIEW" -Details "Manual verification required" -Recommendation "Verify salt config"
         }
     } catch {
         Add-CISResult -ControlID "CIS-1.3.1" -Section $section -Title "Ensure default salt is configured properly" -Status "ERROR" -Details $_.Exception.Message
@@ -347,7 +347,7 @@ function Test-Section1-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-1.3.2" -Section $section -Title "Ensure image profile VIB acceptance levels are verified" -Status "PASS" -Details "All image profiles have proper acceptance levels"
         } else {
-            Add-CISResult -ControlID "CIS-1.3.2" -Section $section -Title "Ensure image profile VIB acceptance levels are verified" -Status "FAIL" -Details "Non-compliant hosts: $($nonCompliantHosts -join ', ')" -Recommendation "Verify image profile acceptance levels"
+            Add-CISResult -ControlID "CIS-1.3.2" -Section $section -Title "Ensure image profile VIB acceptance levels are verified" -Status "FAIL" -Details "Non-compliant hosts: $($nonCompliantHosts -join ', ')" -Recommendation "Verify image profiles"
         }
     } catch {
         Add-CISResult -ControlID "CIS-1.3.2" -Section $section -Title "Ensure image profile VIB acceptance levels are verified" -Status "ERROR" -Details $_.Exception.Message
@@ -361,7 +361,7 @@ function Test-Section1-Controls {
             $bootType = $host.ExtensionData.Hardware.SystemInfo.Firmware
             $hostsToReview += "$($host.Name):$bootType"
         }
-        Add-CISResult -ControlID "CIS-1.4.1" -Section $section -Title "Ensure BIOS/UEFI settings are configured securely" -Status "REVIEW" -Details "Boot types: $($hostsToReview -join ', ')" -Recommendation "Manually verify BIOS/UEFI security settings"
+        Add-CISResult -ControlID "CIS-1.4.1" -Section $section -Title "Ensure BIOS/UEFI settings are configured securely" -Status "REVIEW" -Details "Boot types: $($hostsToReview -join ', ')" -Recommendation "Verify BIOS/UEFI settings"
     } catch {
         Add-CISResult -ControlID "CIS-1.4.1" -Section $section -Title "Ensure BIOS/UEFI settings are configured securely" -Status "ERROR" -Details $_.Exception.Message
     }
@@ -383,7 +383,7 @@ function Test-Section1-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-1.4.2" -Section $section -Title "Ensure secure boot is enabled" -Status "PASS" -Details "Secure boot enabled on all hosts"
         } else {
-            Add-CISResult -ControlID "CIS-1.4.2" -Section $section -Title "Ensure secure boot is enabled" -Status "REVIEW" -Details "Check secure boot on: $($nonCompliantHosts -join ', ')" -Recommendation "Enable secure boot in BIOS/UEFI"
+            Add-CISResult -ControlID "CIS-1.4.2" -Section $section -Title "Ensure secure boot is enabled" -Status "REVIEW" -Details "Check secure boot on: $($nonCompliantHosts -join ', ')" -Recommendation "Enable secure boot"
         }
     } catch {
         Add-CISResult -ControlID "CIS-1.4.2" -Section $section -Title "Ensure secure boot is enabled" -Status "ERROR" -Details $_.Exception.Message
@@ -402,7 +402,7 @@ function Test-Section1-Controls {
         if ($hostsWithDevices.Count -eq 0) {
             Add-CISResult -ControlID "CIS-1.4.3" -Section $section -Title "Ensure no unauthorized devices are connected" -Status "PASS" -Details "No unauthorized devices found"
         } else {
-            Add-CISResult -ControlID "CIS-1.4.3" -Section $section -Title "Ensure no unauthorized devices are connected" -Status "REVIEW" -Details "Hosts with unknown devices: $($hostsWithDevices -join ', ')" -Recommendation "Review and authorize all connected devices"
+            Add-CISResult -ControlID "CIS-1.4.3" -Section $section -Title "Ensure no unauthorized devices are connected" -Status "REVIEW" -Details "Hosts with unknown devices: $($hostsWithDevices -join ', ')" -Recommendation "Review connected devices"
         }
     } catch {
         Add-CISResult -ControlID "CIS-1.4.3" -Section $section -Title "Ensure no unauthorized devices are connected" -Status "ERROR" -Details $_.Exception.Message
@@ -422,7 +422,7 @@ function Test-Section1-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-1.5.1" -Section $section -Title "Ensure proper time synchronization" -Status "PASS" -Details "Time synchronization properly configured"
         } else {
-            Add-CISResult -ControlID "CIS-1.5.1" -Section $section -Title "Ensure proper time synchronization" -Status "FAIL" -Details "Time sync issues: $($nonCompliantHosts -join ', ')" -Recommendation "Configure multiple NTP servers"
+            Add-CISResult -ControlID "CIS-1.5.1" -Section $section -Title "Ensure proper time synchronization" -Status "FAIL" -Details "Time sync issues: $($nonCompliantHosts -join ', ')" -Recommendation "Configure NTP servers"
         }
     } catch {
         Add-CISResult -ControlID "CIS-1.5.1" -Section $section -Title "Ensure proper time synchronization" -Status "ERROR" -Details $_.Exception.Message
@@ -435,7 +435,7 @@ function Test-Section1-Controls {
         if ($hostsWithoutProfiles.Count -eq 0) {
             Add-CISResult -ControlID "CIS-1.5.2" -Section $section -Title "Ensure host profiles are used for configuration management" -Status "PASS" -Details "All hosts use host profiles"
         } else {
-            Add-CISResult -ControlID "CIS-1.5.2" -Section $section -Title "Ensure host profiles are used for configuration management" -Status "REVIEW" -Details "Hosts without profiles: $($hostsWithoutProfiles.Count)" -Recommendation "Implement host profiles for configuration management"
+            Add-CISResult -ControlID "CIS-1.5.2" -Section $section -Title "Ensure host profiles are used for configuration management" -Status "REVIEW" -Details "Hosts without profiles: $($hostsWithoutProfiles.Count)" -Recommendation "Use host profiles"
         }
     } catch {
         Add-CISResult -ControlID "CIS-1.5.2" -Section $section -Title "Ensure host profiles are used for configuration management" -Status "ERROR" -Details $_.Exception.Message
@@ -447,7 +447,7 @@ function Test-Section1-Controls {
         if ($updateManager) {
             Add-CISResult -ControlID "CIS-1.5.3" -Section $section -Title "Ensure vSphere Update Manager is configured" -Status "PASS" -Details "vSphere Update Manager is available"
         } else {
-            Add-CISResult -ControlID "CIS-1.5.3" -Section $section -Title "Ensure vSphere Update Manager is configured" -Status "REVIEW" -Details "vSphere Update Manager not detected" -Recommendation "Configure vSphere Update Manager for patch management"
+            Add-CISResult -ControlID "CIS-1.5.3" -Section $section -Title "Ensure vSphere Update Manager is configured" -Status "REVIEW" -Details "vSphere Update Manager not detected" -Recommendation "Configure Update Manager"
         }
     } catch {
         Add-CISResult -ControlID "CIS-1.5.3" -Section $section -Title "Ensure vSphere Update Manager is configured" -Status "ERROR" -Details $_.Exception.Message
@@ -471,7 +471,7 @@ function Test-Section1-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-1.6.1" -Section $section -Title "Ensure ESXi host software is from trusted sources" -Status "PASS" -Details "All hosts use trusted software sources"
         } else {
-            Add-CISResult -ControlID "CIS-1.6.1" -Section $section -Title "Ensure ESXi host software is from trusted sources" -Status "REVIEW" -Details "Verify software sources: $($nonCompliantHosts -join ', ')" -Recommendation "Ensure ESXi software is from trusted vendors"
+            Add-CISResult -ControlID "CIS-1.6.1" -Section $section -Title "Ensure ESXi host software is from trusted sources" -Status "REVIEW" -Details "Verify software sources: $($nonCompliantHosts -join ', ')" -Recommendation "Use trusted software"
         }
     } catch {
         Add-CISResult -ControlID "CIS-1.6.1" -Section $section -Title "Ensure ESXi host software is from trusted sources" -Status "ERROR" -Details $_.Exception.Message
@@ -486,7 +486,7 @@ function Test-Section1-Controls {
             if ($validLicenses.Count -gt 0) {
                 Add-CISResult -ControlID "CIS-1.7.1" -Section $section -Title "Ensure vCenter Server is properly licensed" -Status "PASS" -Details "Valid licenses detected: $($validLicenses.Count)"
             } else {
-                Add-CISResult -ControlID "CIS-1.7.1" -Section $section -Title "Ensure vCenter Server is properly licensed" -Status "FAIL" -Details "No valid licenses found" -Recommendation "Ensure proper vSphere licensing"
+                Add-CISResult -ControlID "CIS-1.7.1" -Section $section -Title "Ensure vCenter Server is properly licensed" -Status "FAIL" -Details "No valid licenses found" -Recommendation "Check licensing"
             }
         } else {
             Add-CISResult -ControlID "CIS-1.7.1" -Section $section -Title "Ensure vCenter Server is properly licensed" -Status "REVIEW" -Details "License manager not accessible" -Recommendation "Verify vCenter licensing configuration"
@@ -575,7 +575,7 @@ function Test-Section2-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-2.1.2" -Section $section -Title "Ensure ESXi host time is synchronized with authoritative time source" -Status "PASS" -Details "All hosts use authoritative time sources"
         } else {
-            Add-CISResult -ControlID "CIS-2.1.2" -Section $section -Title "Ensure ESXi host time is synchronized with authoritative time source" -Status "REVIEW" -Details "Check NTP sources: $($nonCompliantHosts -join ', ')" -Recommendation "Use authoritative NTP servers"
+            Add-CISResult -ControlID "CIS-2.1.2" -Section $section -Title "Ensure ESXi host time is synchronized with authoritative time source" -Status "REVIEW" -Details "Check NTP sources: $($nonCompliantHosts -join ', ')" -Recommendation "Use authoritative NTP"
         }
     } catch {
         Add-CISResult -ControlID "CIS-2.1.2" -Section $section -Title "Ensure ESXi host time is synchronized with authoritative time source" -Status "ERROR" -Details $_.Exception.Message
@@ -596,7 +596,7 @@ function Test-Section2-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-2.2.2" -Section $section -Title "Ensure default firewall rules are configured properly" -Status "PASS" -Details "Firewall rules properly configured"
         } else {
-            Add-CISResult -ControlID "CIS-2.2.2" -Section $section -Title "Ensure default firewall rules are configured properly" -Status "FAIL" -Details "Hosts with unnecessary rules: $($nonCompliantHosts -join ', ')" -Recommendation "Disable unnecessary firewall rules"
+            Add-CISResult -ControlID "CIS-2.2.2" -Section $section -Title "Ensure default firewall rules are configured properly" -Status "FAIL" -Details "Hosts with unnecessary rules: $($nonCompliantHosts -join ', ')" -Recommendation "Disable unnecessary rules"
         }
     } catch {
         Add-CISResult -ControlID "CIS-2.2.2" -Section $section -Title "Ensure default firewall rules are configured properly" -Status "ERROR" -Details $_.Exception.Message
@@ -616,7 +616,7 @@ function Test-Section2-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-2.2.3" -Section $section -Title "Ensure firewall rules are restrictive" -Status "PASS" -Details "Firewall rules are restrictive"
         } else {
-            Add-CISResult -ControlID "CIS-2.2.3" -Section $section -Title "Ensure firewall rules are restrictive" -Status "FAIL" -Details "Hosts with open rules: $($nonCompliantHosts -join ', ')" -Recommendation "Restrict firewall rules to specific IP ranges"
+            Add-CISResult -ControlID "CIS-2.2.3" -Section $section -Title "Ensure firewall rules are restrictive" -Status "FAIL" -Details "Hosts with open rules: $($nonCompliantHosts -join ', ')" -Recommendation "Restrict firewall rules"
         }
     } catch {
         Add-CISResult -ControlID "CIS-2.2.3" -Section $section -Title "Ensure firewall rules are restrictive" -Status "ERROR" -Details $_.Exception.Message
@@ -635,7 +635,7 @@ function Test-Section2-Controls {
         if ($hostsWithSelfSigned.Count -eq 0) {
             Add-CISResult -ControlID "CIS-2.3.2" -Section $section -Title "Ensure default self-signed certificate is not used" -Status "PASS" -Details "No self-signed certificates found"
         } else {
-            Add-CISResult -ControlID "CIS-2.3.2" -Section $section -Title "Ensure default self-signed certificate is not used" -Status "FAIL" -Details "Self-signed certs on: $($hostsWithSelfSigned -join ', ')" -Recommendation "Replace with CA-signed certificates"
+            Add-CISResult -ControlID "CIS-2.3.2" -Section $section -Title "Ensure default self-signed certificate is not used" -Status "FAIL" -Details "Self-signed certs on: $($hostsWithSelfSigned -join ', ')" -Recommendation "Use CA certificates"
         }
     } catch {
         Add-CISResult -ControlID "CIS-2.3.2" -Section $section -Title "Ensure default self-signed certificate is not used" -Status "ERROR" -Details $_.Exception.Message
@@ -654,7 +654,7 @@ function Test-Section2-Controls {
         if ($hostsWithExpiredCerts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-2.3.3" -Section $section -Title "Ensure expired or revoked certificates are not used" -Status "PASS" -Details "All certificates are valid"
         } else {
-            Add-CISResult -ControlID "CIS-2.3.3" -Section $section -Title "Ensure expired or revoked certificates are not used" -Status "FAIL" -Details "Expired certs: $($hostsWithExpiredCerts -join ', ')" -Recommendation "Renew expired certificates"
+            Add-CISResult -ControlID "CIS-2.3.3" -Section $section -Title "Ensure expired or revoked certificates are not used" -Status "FAIL" -Details "Expired certs: $($hostsWithExpiredCerts -join ', ')" -Recommendation "Renew certificates"
         }
     } catch {
         Add-CISResult -ControlID "CIS-2.3.3" -Section $section -Title "Ensure expired or revoked certificates are not used" -Status "ERROR" -Details $_.Exception.Message
@@ -675,7 +675,7 @@ function Test-Section2-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-2.4.1" -Section $section -Title "Ensure SNMP is configured properly" -Status "PASS" -Details "SNMP properly configured or disabled"
         } else {
-            Add-CISResult -ControlID "CIS-2.4.1" -Section $section -Title "Ensure SNMP is configured properly" -Status "FAIL" -Details "SNMP issues: $($nonCompliantHosts -join ', ')" -Recommendation "Use strong SNMP community strings or disable SNMP"
+            Add-CISResult -ControlID "CIS-2.4.1" -Section $section -Title "Ensure SNMP is configured properly" -Status "FAIL" -Details "SNMP issues: $($nonCompliantHosts -join ', ')" -Recommendation "Configure SNMP properly"
         }
     } catch {
         Add-CISResult -ControlID "CIS-2.4.1" -Section $section -Title "Ensure SNMP is configured properly" -Status "ERROR" -Details $_.Exception.Message
@@ -694,7 +694,7 @@ function Test-Section2-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-2.4.2" -Section $section -Title "Ensure dvfilter network APIs are configured properly" -Status "PASS" -Details "dvfilter APIs properly configured"
         } else {
-            Add-CISResult -ControlID "CIS-2.4.2" -Section $section -Title "Ensure dvfilter network APIs are configured properly" -Status "FAIL" -Details "Open dvfilter on: $($nonCompliantHosts -join ', ')" -Recommendation "Configure specific IP for dvfilter binding"
+            Add-CISResult -ControlID "CIS-2.4.2" -Section $section -Title "Ensure dvfilter network APIs are configured properly" -Status "FAIL" -Details "Open dvfilter on: $($nonCompliantHosts -join ', ')" -Recommendation "Configure dvfilter IP"
         }
     } catch {
         Add-CISResult -ControlID "CIS-2.4.2" -Section $section -Title "Ensure dvfilter network APIs are configured properly" -Status "ERROR" -Details $_.Exception.Message
@@ -713,7 +713,7 @@ function Test-Section2-Controls {
         if ($adJoinedHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-2.5.1" -Section $section -Title "Ensure vSphere Authentication Proxy is used when adding hosts to Active Directory" -Status "INFO" -Details "No hosts joined to Active Directory"
         } else {
-            Add-CISResult -ControlID "CIS-2.5.1" -Section $section -Title "Ensure vSphere Authentication Proxy is used when adding hosts to Active Directory" -Status "REVIEW" -Details "AD-joined hosts: $($adJoinedHosts -join ', ')" -Recommendation "Verify vSphere Authentication Proxy was used"
+            Add-CISResult -ControlID "CIS-2.5.1" -Section $section -Title "Ensure vSphere Authentication Proxy is used when adding hosts to Active Directory" -Status "REVIEW" -Details "AD-joined hosts: $($adJoinedHosts -join ', ')" -Recommendation "Verify Auth Proxy"
         }
     } catch {
         Add-CISResult -ControlID "CIS-2.5.1" -Section $section -Title "Ensure vSphere Authentication Proxy is used when adding hosts to Active Directory" -Status "ERROR" -Details $_.Exception.Message
@@ -732,7 +732,7 @@ function Test-Section2-Controls {
         if ($nonCompliantSwitches.Count -eq 0) {
             Add-CISResult -ControlID "CIS-2.6.1" -Section $section -Title "Ensure VDS health check is disabled" -Status "PASS" -Details "VDS health check disabled or no VDS found"
         } else {
-            Add-CISResult -ControlID "CIS-2.6.1" -Section $section -Title "Ensure VDS health check is disabled" -Status "FAIL" -Details "Health check enabled on: $($nonCompliantSwitches -join ', ')" -Recommendation "Disable VDS health check feature"
+            Add-CISResult -ControlID "CIS-2.6.1" -Section $section -Title "Ensure VDS health check is disabled" -Status "FAIL" -Details "Health check enabled on: $($nonCompliantSwitches -join ', ')" -Recommendation "Disable VDS health check"
         }
     } catch {
         Add-CISResult -ControlID "CIS-2.6.1" -Section $section -Title "Ensure VDS health check is disabled" -Status "ERROR" -Details $_.Exception.Message
@@ -797,7 +797,7 @@ function Test-Section3-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-3.1.2" -Section $section -Title "Ensure centralized ESXi host dumps are configured" -Status "PASS" -Details "Core dump partitions configured on all hosts"
         } else {
-            Add-CISResult -ControlID "CIS-3.1.2" -Section $section -Title "Ensure centralized ESXi host dumps are configured" -Status "FAIL" -Details "No dump partition: $($nonCompliantHosts -join ', ')" -Recommendation "Configure core dump partition for centralized dumps"
+            Add-CISResult -ControlID "CIS-3.1.2" -Section $section -Title "Ensure centralized ESXi host dumps are configured" -Status "FAIL" -Details "No dump partition: $($nonCompliantHosts -join ', ')" -Recommendation "Configure dump partition"
         }
     } catch {
         Add-CISResult -ControlID "CIS-3.1.2" -Section $section -Title "Ensure centralized ESXi host dumps are configured" -Status "ERROR" -Details $_.Exception.Message
@@ -817,7 +817,7 @@ function Test-Section3-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-3.2.2" -Section $section -Title "Ensure syslog rotation is configured" -Status "PASS" -Details "Syslog rotation properly configured"
         } else {
-            Add-CISResult -ControlID "CIS-3.2.2" -Section $section -Title "Ensure syslog rotation is configured" -Status "FAIL" -Details "Rotation issues: $($nonCompliantHosts -join ', ')" -Recommendation "Configure syslog rotation and size limits"
+            Add-CISResult -ControlID "CIS-3.2.2" -Section $section -Title "Ensure syslog rotation is configured" -Status "FAIL" -Details "Rotation issues: $($nonCompliantHosts -join ', ')" -Recommendation "Configure log rotation"
         }
     } catch {
         Add-CISResult -ControlID "CIS-3.2.2" -Section $section -Title "Ensure syslog rotation is configured" -Status "ERROR" -Details $_.Exception.Message
@@ -830,7 +830,7 @@ function Test-Section3-Controls {
         if ($logLevel -and $logLevel.Value -in @("info", "verbose", "trivia")) {
             Add-CISResult -ControlID "CIS-3.3.1" -Section $section -Title "Ensure vCenter Server logging is configured" -Status "PASS" -Details "vCenter logging level: $($logLevel.Value)"
         } else {
-            Add-CISResult -ControlID "CIS-3.3.1" -Section $section -Title "Ensure vCenter Server logging is configured" -Status "REVIEW" -Details "Check vCenter logging configuration" -Recommendation "Configure appropriate vCenter logging level"
+            Add-CISResult -ControlID "CIS-3.3.1" -Section $section -Title "Ensure vCenter Server logging is configured" -Status "REVIEW" -Details "Check vCenter logging configuration" -Recommendation "Configure vCenter logging"
         }
     } catch {
         Add-CISResult -ControlID "CIS-3.3.1" -Section $section -Title "Ensure vCenter Server logging is configured" -Status "ERROR" -Details $_.Exception.Message
@@ -843,7 +843,7 @@ function Test-Section3-Controls {
         if ($logRetention -and [int]$logRetention.Value -ge 10) {
             Add-CISResult -ControlID "CIS-3.3.2" -Section $section -Title "Ensure vCenter Server log retention is configured" -Status "PASS" -Details "Log retention: $($logRetention.Value) files"
         } else {
-            Add-CISResult -ControlID "CIS-3.3.2" -Section $section -Title "Ensure vCenter Server log retention is configured" -Status "REVIEW" -Details "Check log retention settings" -Recommendation "Configure adequate log file retention"
+            Add-CISResult -ControlID "CIS-3.3.2" -Section $section -Title "Ensure vCenter Server log retention is configured" -Status "REVIEW" -Details "Check log retention settings" -Recommendation "Configure log retention"
         }
     } catch {
         Add-CISResult -ControlID "CIS-3.3.2" -Section $section -Title "Ensure vCenter Server log retention is configured" -Status "ERROR" -Details $_.Exception.Message
@@ -862,7 +862,7 @@ function Test-Section3-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-3.4.1" -Section $section -Title "Ensure audit logging is enabled" -Status "PASS" -Details "Audit logging enabled on all hosts"
         } else {
-            Add-CISResult -ControlID "CIS-3.4.1" -Section $section -Title "Ensure audit logging is enabled" -Status "FAIL" -Details "Audit disabled on: $($nonCompliantHosts -join ', ')" -Recommendation "Enable audit record logging"
+            Add-CISResult -ControlID "CIS-3.4.1" -Section $section -Title "Ensure audit logging is enabled" -Status "FAIL" -Details "Audit disabled on: $($nonCompliantHosts -join ', ')" -Recommendation "Enable audit logging"
         }
     } catch {
         Add-CISResult -ControlID "CIS-3.4.1" -Section $section -Title "Ensure audit logging is enabled" -Status "ERROR" -Details $_.Exception.Message
@@ -881,7 +881,7 @@ function Test-Section3-Controls {
         if ($protectedHosts -eq $esxiHosts.Count) {
             Add-CISResult -ControlID "CIS-3.4.2" -Section $section -Title "Ensure audit logs are protected from unauthorized access" -Status "PASS" -Details "Logs stored on protected datastores"
         } else {
-            Add-CISResult -ControlID "CIS-3.4.2" -Section $section -Title "Ensure audit logs are protected from unauthorized access" -Status "REVIEW" -Details "Verify log storage security" -Recommendation "Store logs on protected datastores with proper permissions"
+            Add-CISResult -ControlID "CIS-3.4.2" -Section $section -Title "Ensure audit logs are protected from unauthorized access" -Status "REVIEW" -Details "Verify log storage security" -Recommendation "Protect log storage"
         }
     } catch {
         Add-CISResult -ControlID "CIS-3.4.2" -Section $section -Title "Ensure audit logs are protected from unauthorized access" -Status "ERROR" -Details $_.Exception.Message
@@ -902,7 +902,7 @@ function Test-Section3-Controls {
             Add-CISResult -ControlID "CIS-3.5.1" -Section $section -Title "Ensure log correlation and analysis is configured" -Status "PASS" -Details "Log correlation configured on all hosts"
         } else {
             $missingHosts = $esxiHosts | Where-Object { $_.Name -notin $hostsWithCorrelation } | Select-Object -ExpandProperty Name
-            Add-CISResult -ControlID "CIS-3.5.1" -Section $section -Title "Ensure log correlation and analysis is configured" -Status "FAIL" -Details "Missing log correlation: $($missingHosts -join ', ')" -Recommendation "Configure centralized logging for log correlation and analysis"
+            Add-CISResult -ControlID "CIS-3.5.1" -Section $section -Title "Ensure log correlation and analysis is configured" -Status "FAIL" -Details "Missing log correlation: $($missingHosts -join ', ')" -Recommendation "Configure log correlation"
         }
     } catch {
         Add-CISResult -ControlID "CIS-3.5.1" -Section $section -Title "Ensure log correlation and analysis is configured" -Status "ERROR" -Details $_.Exception.Message
@@ -929,7 +929,7 @@ function Test-Section4-Controls {
         if ($sshEnabledHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.1.1" -Section $section -Title "Ensure SSH access is properly configured" -Status "PASS" -Details "SSH disabled on all hosts"
         } else {
-            Add-CISResult -ControlID "CIS-4.1.1" -Section $section -Title "Ensure SSH access is properly configured" -Status "REVIEW" -Details "SSH enabled on: $($sshEnabledHosts -join ', ')" -Recommendation "Disable SSH when not needed"
+            Add-CISResult -ControlID "CIS-4.1.1" -Section $section -Title "Ensure SSH access is properly configured" -Status "REVIEW" -Details "SSH enabled on: $($sshEnabledHosts -join ', ')" -Recommendation "Disable SSH"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.1.1" -Section $section -Title "Ensure SSH access is properly configured" -Status "ERROR" -Details $_.Exception.Message
@@ -969,7 +969,7 @@ function Test-Section4-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.1.2" -Section $section -Title "Ensure SSH host key checking is enabled" -Status "PASS" -Details "SSH disabled on all hosts"
         } else {
-            Add-CISResult -ControlID "CIS-4.1.2" -Section $section -Title "Ensure SSH host key checking is enabled" -Status "REVIEW" -Details "SSH enabled on: $($nonCompliantHosts -join ', ')" -Recommendation "Verify SSH host key checking is enabled"
+            Add-CISResult -ControlID "CIS-4.1.2" -Section $section -Title "Ensure SSH host key checking is enabled" -Status "REVIEW" -Details "SSH enabled on: $($nonCompliantHosts -join ', ')" -Recommendation "Verify SSH host keys"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.1.2" -Section $section -Title "Ensure SSH host key checking is enabled" -Status "ERROR" -Details $_.Exception.Message
@@ -988,7 +988,7 @@ function Test-Section4-Controls {
         if ($sshEnabledHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.1.3" -Section $section -Title "Ensure SSH protocol 2 is used" -Status "PASS" -Details "SSH disabled on all hosts"
         } else {
-            Add-CISResult -ControlID "CIS-4.1.3" -Section $section -Title "Ensure SSH protocol 2 is used" -Status "REVIEW" -Details "SSH enabled on: $($sshEnabledHosts -join ', ')" -Recommendation "Verify SSH protocol 2 is configured"
+            Add-CISResult -ControlID "CIS-4.1.3" -Section $section -Title "Ensure SSH protocol 2 is used" -Status "REVIEW" -Details "SSH enabled on: $($sshEnabledHosts -join ', ')" -Recommendation "Use SSH protocol 2"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.1.3" -Section $section -Title "Ensure SSH protocol 2 is used" -Status "ERROR" -Details $_.Exception.Message
@@ -1007,7 +1007,7 @@ function Test-Section4-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.1.4" -Section $section -Title "Ensure SSH idle timeout is configured" -Status "PASS" -Details "SSH timeout properly configured"
         } else {
-            Add-CISResult -ControlID "CIS-4.1.4" -Section $section -Title "Ensure SSH idle timeout is configured" -Status "FAIL" -Details "High timeout on: $($nonCompliantHosts -join ', ')" -Recommendation "Set SSH timeout to 600 seconds or less"
+            Add-CISResult -ControlID "CIS-4.1.4" -Section $section -Title "Ensure SSH idle timeout is configured" -Status "FAIL" -Details "High timeout on: $($nonCompliantHosts -join ', ')" -Recommendation "Set SSH timeout"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.1.4" -Section $section -Title "Ensure SSH idle timeout is configured" -Status "ERROR" -Details $_.Exception.Message
@@ -1045,7 +1045,7 @@ function Test-Section4-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.2.2" -Section $section -Title "Ensure password complexity is enforced" -Status "PASS" -Details "Password complexity enforced"
         } else {
-            Add-CISResult -ControlID "CIS-4.2.2" -Section $section -Title "Ensure password complexity is enforced" -Status "FAIL" -Details "Weak password policy: $($nonCompliantHosts -join ', ')" -Recommendation "Configure strong password complexity requirements"
+            Add-CISResult -ControlID "CIS-4.2.2" -Section $section -Title "Ensure password complexity is enforced" -Status "FAIL" -Details "Weak password policy: $($nonCompliantHosts -join ', ')" -Recommendation "Set password complexity"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.2.2" -Section $section -Title "Ensure password complexity is enforced" -Status "ERROR" -Details $_.Exception.Message
@@ -1064,7 +1064,7 @@ function Test-Section4-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.2.3" -Section $section -Title "Ensure password reuse is limited" -Status "PASS" -Details "Password reuse properly limited"
         } else {
-            Add-CISResult -ControlID "CIS-4.2.3" -Section $section -Title "Ensure password reuse is limited" -Status "FAIL" -Details "Weak password history: $($nonCompliantHosts -join ', ')" -Recommendation "Set password history to 5 or more"
+            Add-CISResult -ControlID "CIS-4.2.3" -Section $section -Title "Ensure password reuse is limited" -Status "FAIL" -Details "Weak password history: $($nonCompliantHosts -join ', ')" -Recommendation "Set password history"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.2.3" -Section $section -Title "Ensure password reuse is limited" -Status "ERROR" -Details $_.Exception.Message
@@ -1083,7 +1083,7 @@ function Test-Section4-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.2.4" -Section $section -Title "Ensure account lockout is configured" -Status "PASS" -Details "Account lockout properly configured"
         } else {
-            Add-CISResult -ControlID "CIS-4.2.4" -Section $section -Title "Ensure account lockout is configured" -Status "FAIL" -Details "Weak lockout policy: $($nonCompliantHosts -join ', ')" -Recommendation "Set account lockout to 3-5 failures"
+            Add-CISResult -ControlID "CIS-4.2.4" -Section $section -Title "Ensure account lockout is configured" -Status "FAIL" -Details "Weak lockout policy: $($nonCompliantHosts -join ', ')" -Recommendation "Set account lockout"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.2.4" -Section $section -Title "Ensure account lockout is configured" -Status "ERROR" -Details $_.Exception.Message
@@ -1105,7 +1105,7 @@ function Test-Section4-Controls {
         if ($nonAdHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.3.1" -Section $section -Title "Ensure Active Directory authentication is used" -Status "PASS" -Details "All hosts use AD authentication: $($adJoinedHosts -join ', ')"
         } else {
-            Add-CISResult -ControlID "CIS-4.3.1" -Section $section -Title "Ensure Active Directory authentication is used" -Status "REVIEW" -Details "Non-AD hosts: $($nonAdHosts -join ', ')" -Recommendation "Consider joining hosts to Active Directory"
+            Add-CISResult -ControlID "CIS-4.3.1" -Section $section -Title "Ensure Active Directory authentication is used" -Status "REVIEW" -Details "Non-AD hosts: $($nonAdHosts -join ', ')" -Recommendation "Use Active Directory"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.3.1" -Section $section -Title "Ensure Active Directory authentication is used" -Status "ERROR" -Details $_.Exception.Message
@@ -1124,7 +1124,7 @@ function Test-Section4-Controls {
         if ($hostsToReview.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.3.2" -Section $section -Title "Ensure only authorized users belong to esxAdminsGroup" -Status "INFO" -Details "No AD-joined hosts found"
         } else {
-            Add-CISResult -ControlID "CIS-4.3.2" -Section $section -Title "Ensure only authorized users belong to esxAdminsGroup" -Status "REVIEW" -Details "AD hosts: $($hostsToReview -join ', ')" -Recommendation "Verify esxAdminsGroup membership in Active Directory"
+            Add-CISResult -ControlID "CIS-4.3.2" -Section $section -Title "Ensure only authorized users belong to esxAdminsGroup" -Status "REVIEW" -Details "AD hosts: $($hostsToReview -join ', ')" -Recommendation "Verify AD group membership"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.3.2" -Section $section -Title "Ensure only authorized users belong to esxAdminsGroup" -Status "ERROR" -Details $_.Exception.Message
@@ -1146,7 +1146,7 @@ function Test-Section4-Controls {
         if ($hostsWithExceptions.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.3.3" -Section $section -Title "Ensure exception users are configured properly" -Status "PASS" -Details "No exception users or lockdown disabled"
         } else {
-            Add-CISResult -ControlID "CIS-4.3.3" -Section $section -Title "Ensure exception users are configured properly" -Status "REVIEW" -Details "Exception users: $($hostsWithExceptions -join ', ')" -Recommendation "Review exception user configurations"
+            Add-CISResult -ControlID "CIS-4.3.3" -Section $section -Title "Ensure exception users are configured properly" -Status "REVIEW" -Details "Exception users: $($hostsWithExceptions -join ', ')" -Recommendation "Review exception users"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.3.3" -Section $section -Title "Ensure exception users are configured properly" -Status "ERROR" -Details $_.Exception.Message
@@ -1160,7 +1160,7 @@ function Test-Section4-Controls {
         if ($excessiveAdmins.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.4.1" -Section $section -Title "Ensure vCenter Server permissions are configured properly" -Status "PASS" -Details "Admin permissions properly assigned"
         } else {
-            Add-CISResult -ControlID "CIS-4.4.1" -Section $section -Title "Ensure vCenter Server permissions are configured properly" -Status "REVIEW" -Details "$($excessiveAdmins.Count) non-standard admin accounts" -Recommendation "Review admin permission assignments"
+            Add-CISResult -ControlID "CIS-4.4.1" -Section $section -Title "Ensure vCenter Server permissions are configured properly" -Status "REVIEW" -Details "$($excessiveAdmins.Count) non-standard admin accounts" -Recommendation "Review admin permissions"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.4.1" -Section $section -Title "Ensure vCenter Server permissions are configured properly" -Status "ERROR" -Details $_.Exception.Message
@@ -1180,7 +1180,7 @@ function Test-Section4-Controls {
         if ($rolesWithExcessivePrivs.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.4.2" -Section $section -Title "Ensure vCenter Server roles are configured properly" -Status "PASS" -Details "Custom roles properly configured"
         } else {
-            Add-CISResult -ControlID "CIS-4.4.2" -Section $section -Title "Ensure vCenter Server roles are configured properly" -Status "REVIEW" -Details "Roles with system privs: $($rolesWithExcessivePrivs -join ', ')" -Recommendation "Review custom role privileges"
+            Add-CISResult -ControlID "CIS-4.4.2" -Section $section -Title "Ensure vCenter Server roles are configured properly" -Status "REVIEW" -Details "Roles with system privs: $($rolesWithExcessivePrivs -join ', ')" -Recommendation "Review role privileges"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.4.2" -Section $section -Title "Ensure vCenter Server roles are configured properly" -Status "ERROR" -Details $_.Exception.Message
@@ -1200,7 +1200,7 @@ function Test-Section4-Controls {
         if ($hostsWithLocalUsers.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.5.1" -Section $section -Title "Ensure ESXi host local user accounts are configured properly" -Status "PASS" -Details "Only system accounts found"
         } else {
-            Add-CISResult -ControlID "CIS-4.5.1" -Section $section -Title "Ensure ESXi host local user accounts are configured properly" -Status "REVIEW" -Details "Local users: $($hostsWithLocalUsers -join ', ')" -Recommendation "Review local user account necessity"
+            Add-CISResult -ControlID "CIS-4.5.1" -Section $section -Title "Ensure ESXi host local user accounts are configured properly" -Status "REVIEW" -Details "Local users: $($hostsWithLocalUsers -join ', ')" -Recommendation "Review local accounts"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.5.1" -Section $section -Title "Ensure ESXi host local user accounts are configured properly" -Status "ERROR" -Details $_.Exception.Message
@@ -1219,7 +1219,7 @@ function Test-Section4-Controls {
         if ($hostsWithWeakRoot.Count -eq 0) {
             Add-CISResult -ControlID "CIS-4.5.2" -Section $section -Title "Ensure default ESXi admin account is secured" -Status "PASS" -Details "Root accounts properly configured"
         } else {
-            Add-CISResult -ControlID "CIS-4.5.2" -Section $section -Title "Ensure default ESXi admin account is secured" -Status "REVIEW" -Details "Check root accounts on: $($hostsWithWeakRoot -join ', ')" -Recommendation "Secure root account with strong password and description"
+            Add-CISResult -ControlID "CIS-4.5.2" -Section $section -Title "Ensure default ESXi admin account is secured" -Status "REVIEW" -Details "Check root accounts on: $($hostsWithWeakRoot -join ', ')" -Recommendation "Secure root account"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.5.2" -Section $section -Title "Ensure default ESXi admin account is secured" -Status "ERROR" -Details $_.Exception.Message
@@ -1235,7 +1235,7 @@ function Test-Section4-Controls {
                 $hostsWithCertAuth += $host.Name
             }
         }
-        Add-CISResult -ControlID "CIS-4.6.1" -Section $section -Title "Ensure certificate-based authentication is used" -Status "REVIEW" -Details "Certificate authentication configuration" -Recommendation "Verify certificate-based authentication is properly configured"
+        Add-CISResult -ControlID "CIS-4.6.1" -Section $section -Title "Ensure certificate-based authentication is used" -Status "REVIEW" -Details "Certificate authentication configuration" -Recommendation "Configure certificate auth"
     } catch {
         Add-CISResult -ControlID "CIS-4.6.1" -Section $section -Title "Ensure certificate-based authentication is used" -Status "ERROR" -Details $_.Exception.Message
     }
@@ -1247,7 +1247,7 @@ function Test-Section4-Controls {
         if ($ssoConfig) {
             Add-CISResult -ControlID "CIS-4.6.2" -Section $section -Title "Ensure multi-factor authentication is enabled" -Status "REVIEW" -Details "SSO configuration detected" -Recommendation "Verify multi-factor authentication is enabled in SSO"
         } else {
-            Add-CISResult -ControlID "CIS-4.6.2" -Section $section -Title "Ensure multi-factor authentication is enabled" -Status "REVIEW" -Details "Check MFA configuration" -Recommendation "Enable multi-factor authentication for enhanced security"
+            Add-CISResult -ControlID "CIS-4.6.2" -Section $section -Title "Ensure multi-factor authentication is enabled" -Status "REVIEW" -Details "Check MFA configuration" -Recommendation "Enable MFA"
         }
     } catch {
         Add-CISResult -ControlID "CIS-4.6.2" -Section $section -Title "Ensure multi-factor authentication is enabled" -Status "ERROR" -Details $_.Exception.Message
@@ -1312,7 +1312,7 @@ function Test-Section5-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-5.1.2" -Section $section -Title "Ensure ESXi shell interactive timeout is configured" -Status "PASS" -Details "Interactive timeout properly configured"
         } else {
-            Add-CISResult -ControlID "CIS-5.1.2" -Section $section -Title "Ensure ESXi shell interactive timeout is configured" -Status "FAIL" -Details "Timeout issues: $($nonCompliantHosts -join ', ')" -Recommendation "Set interactive timeout to 600 seconds or less"
+            Add-CISResult -ControlID "CIS-5.1.2" -Section $section -Title "Ensure ESXi shell interactive timeout is configured" -Status "FAIL" -Details "Timeout issues: $($nonCompliantHosts -join ', ')" -Recommendation "Set interactive timeout"
         }
     } catch {
         Add-CISResult -ControlID "CIS-5.1.2" -Section $section -Title "Ensure ESXi shell interactive timeout is configured" -Status "ERROR" -Details $_.Exception.Message
@@ -1331,7 +1331,7 @@ function Test-Section5-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-5.1.3" -Section $section -Title "Ensure ESXi shell timeout is configured" -Status "PASS" -Details "Shell timeout properly configured"
         } else {
-            Add-CISResult -ControlID "CIS-5.1.3" -Section $section -Title "Ensure ESXi shell timeout is configured" -Status "FAIL" -Details "Timeout issues: $($nonCompliantHosts -join ', ')" -Recommendation "Set shell timeout to 3600 seconds or less"
+            Add-CISResult -ControlID "CIS-5.1.3" -Section $section -Title "Ensure ESXi shell timeout is configured" -Status "FAIL" -Details "Timeout issues: $($nonCompliantHosts -join ', ')" -Recommendation "Set shell timeout"
         }
     } catch {
         Add-CISResult -ControlID "CIS-5.1.3" -Section $section -Title "Ensure ESXi shell timeout is configured" -Status "ERROR" -Details $_.Exception.Message
@@ -1351,7 +1351,7 @@ function Test-Section5-Controls {
         if ($hostsWithKeys.Count -eq 0) {
             Add-CISResult -ControlID "CIS-5.1.4" -Section $section -Title "Ensure SSH authorized keys file is empty" -Status "PASS" -Details "SSH disabled on all hosts"
         } else {
-            Add-CISResult -ControlID "CIS-5.1.4" -Section $section -Title "Ensure SSH authorized keys file is empty" -Status "REVIEW" -Details "SSH enabled on: $($hostsWithKeys -join ', ')" -Recommendation "Verify authorized_keys files are empty"
+            Add-CISResult -ControlID "CIS-5.1.4" -Section $section -Title "Ensure SSH authorized keys file is empty" -Status "REVIEW" -Details "SSH enabled on: $($hostsWithKeys -join ', ')" -Recommendation "Check authorized_keys"
         }
     } catch {
         Add-CISResult -ControlID "CIS-5.1.4" -Section $section -Title "Ensure SSH authorized keys file is empty" -Status "ERROR" -Details $_.Exception.Message
@@ -1370,7 +1370,7 @@ function Test-Section5-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-5.2.2" -Section $section -Title "Ensure strict lockdown mode is enabled" -Status "PASS" -Details "Strict lockdown enabled on all hosts"
         } else {
-            Add-CISResult -ControlID "CIS-5.2.2" -Section $section -Title "Ensure strict lockdown mode is enabled" -Status "REVIEW" -Details "Non-strict lockdown: $($nonCompliantHosts -join ', ')" -Recommendation "Enable strict lockdown mode for maximum security"
+            Add-CISResult -ControlID "CIS-5.2.2" -Section $section -Title "Ensure strict lockdown mode is enabled" -Status "REVIEW" -Details "Non-strict lockdown: $($nonCompliantHosts -join ', ')" -Recommendation "Enable strict lockdown"
         }
     } catch {
         Add-CISResult -ControlID "CIS-5.2.2" -Section $section -Title "Ensure strict lockdown mode is enabled" -Status "ERROR" -Details $_.Exception.Message
@@ -1392,7 +1392,7 @@ function Test-Section5-Controls {
         if ($hostsWithoutTrustedUsers.Count -eq 0) {
             Add-CISResult -ControlID "CIS-5.2.3" -Section $section -Title "Ensure DCUI has trusted users for lockdown mode" -Status "PASS" -Details "Trusted users configured or lockdown disabled"
         } else {
-            Add-CISResult -ControlID "CIS-5.2.3" -Section $section -Title "Ensure DCUI has trusted users for lockdown mode" -Status "REVIEW" -Details "No trusted users: $($hostsWithoutTrustedUsers -join ', ')" -Recommendation "Configure trusted users for DCUI access in lockdown mode"
+            Add-CISResult -ControlID "CIS-5.2.3" -Section $section -Title "Ensure DCUI has trusted users for lockdown mode" -Status "REVIEW" -Details "No trusted users: $($hostsWithoutTrustedUsers -join ', ')" -Recommendation "Configure trusted users"
         }
     } catch {
         Add-CISResult -ControlID "CIS-5.2.3" -Section $section -Title "Ensure DCUI has trusted users for lockdown mode" -Status "ERROR" -Details $_.Exception.Message
@@ -1414,7 +1414,7 @@ function Test-Section5-Controls {
         if ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-5.3.1" -Section $section -Title "Ensure CIM access is limited" -Status "PASS" -Details "CIM access properly limited"
         } else {
-            Add-CISResult -ControlID "CIS-5.3.1" -Section $section -Title "Ensure CIM access is limited" -Status "REVIEW" -Details "CIM enabled on: $($nonCompliantHosts -join ', ')" -Recommendation "Limit CIM access to authorized management systems only"
+            Add-CISResult -ControlID "CIS-5.3.1" -Section $section -Title "Ensure CIM access is limited" -Status "REVIEW" -Details "CIM enabled on: $($nonCompliantHosts -join ', ')" -Recommendation "Limit CIM access"
         }
     } catch {
         Add-CISResult -ControlID "CIS-5.3.1" -Section $section -Title "Ensure CIM access is limited" -Status "ERROR" -Details $_.Exception.Message
@@ -1433,7 +1433,7 @@ function Test-Section5-Controls {
         if ($hostsToReview.Count -eq 0) {
             Add-CISResult -ControlID "CIS-5.4.1" -Section $section -Title "Ensure contents of exposed configuration files are not modified" -Status "PASS" -Details "Shell warnings not suppressed"
         } else {
-            Add-CISResult -ControlID "CIS-5.4.1" -Section $section -Title "Ensure contents of exposed configuration files are not modified" -Status "REVIEW" -Details "Check config files: $($hostsToReview -join ', ')" -Recommendation "Verify configuration files have not been improperly modified"
+            Add-CISResult -ControlID "CIS-5.4.1" -Section $section -Title "Ensure contents of exposed configuration files are not modified" -Status "REVIEW" -Details "Check config files: $($hostsToReview -join ', ')" -Recommendation "Verify config files"
         }
     } catch {
         Add-CISResult -ControlID "CIS-5.4.1" -Section $section -Title "Ensure contents of exposed configuration files are not modified" -Status "ERROR" -Details $_.Exception.Message
@@ -1452,7 +1452,7 @@ function Test-Section5-Controls {
         if ($hostsWithIssues.Count -eq 0) {
             Add-CISResult -ControlID "CIS-5.4.2" -Section $section -Title "Ensure system resource allocation is configured" -Status "PASS" -Details "System resource allocation properly configured"
         } else {
-            Add-CISResult -ControlID "CIS-5.4.2" -Section $section -Title "Ensure system resource allocation is configured" -Status "REVIEW" -Details "Resource issues: $($hostsWithIssues -join ', ')" -Recommendation "Configure adequate system resource reservations"
+            Add-CISResult -ControlID "CIS-5.4.2" -Section $section -Title "Ensure system resource allocation is configured" -Status "REVIEW" -Details "Resource issues: $($hostsWithIssues -join ', ')" -Recommendation "Configure resource limits"
         }
     } catch {
         Add-CISResult -ControlID "CIS-5.4.2" -Section $section -Title "Ensure system resource allocation is configured" -Status "ERROR" -Details $_.Exception.Message
@@ -1506,7 +1506,7 @@ function Test-Section6-Controls {
         } elseif ($nonCompliantHosts.Count -eq 0) {
             Add-CISResult -ControlID "CIS-6.1.2" -Section $section -Title "Ensure bidirectional CHAP authentication for iSCSI traffic is enabled" -Status "PASS" -Details "Bidirectional CHAP configured on all iSCSI adapters"
         } else {
-            Add-CISResult -ControlID "CIS-6.1.2" -Section $section -Title "Ensure bidirectional CHAP authentication for iSCSI traffic is enabled" -Status "FAIL" -Details "CHAP issues: $($nonCompliantHosts -join ', ')" -Recommendation "Enable bidirectional CHAP authentication for iSCSI"
+            Add-CISResult -ControlID "CIS-6.1.2" -Section $section -Title "Ensure bidirectional CHAP authentication for iSCSI traffic is enabled" -Status "FAIL" -Details "CHAP issues: $($nonCompliantHosts -join ', ')" -Recommendation "Enable CHAP authentication"
         }
     } catch {
         Add-CISResult -ControlID "CIS-6.1.2" -Section $section -Title "Ensure bidirectional CHAP authentication for iSCSI traffic is enabled" -Status "ERROR" -Details $_.Exception.Message
@@ -1538,7 +1538,7 @@ function Test-Section6-Controls {
         } elseif ($duplicateSecrets.Count -eq 0) {
             Add-CISResult -ControlID "CIS-6.1.3" -Section $section -Title "Ensure uniqueness of CHAP authentication secrets for iSCSI traffic" -Status "PASS" -Details "All CHAP secrets are unique"
         } else {
-            Add-CISResult -ControlID "CIS-6.1.3" -Section $section -Title "Ensure uniqueness of CHAP authentication secrets for iSCSI traffic" -Status "FAIL" -Details "Duplicate CHAP secrets found" -Recommendation "Ensure each iSCSI adapter has unique CHAP secrets"
+            Add-CISResult -ControlID "CIS-6.1.3" -Section $section -Title "Ensure uniqueness of CHAP authentication secrets for iSCSI traffic" -Status "FAIL" -Details "Duplicate CHAP secrets found" -Recommendation "Use unique CHAP secrets"
         }
     } catch {
         Add-CISResult -ControlID "CIS-6.1.3" -Section $section -Title "Ensure uniqueness of CHAP authentication secrets for iSCSI traffic" -Status "ERROR" -Details $_.Exception.Message
@@ -1558,7 +1558,7 @@ function Test-Section6-Controls {
             }
         }
         if ($hostsWithMultiplePaths.Count -gt 0) {
-            Add-CISResult -ControlID "CIS-6.2.1" -Section $section -Title "Ensure SAN resources are segregated properly" -Status "REVIEW" -Details "Multiple paths detected" -Recommendation "Verify SAN path segregation and zoning"
+            Add-CISResult -ControlID "CIS-6.2.1" -Section $section -Title "Ensure SAN resources are segregated properly" -Status "REVIEW" -Details "Multiple paths detected" -Recommendation "Verify SAN segregation"
         } else {
             Add-CISResult -ControlID "CIS-6.2.1" -Section $section -Title "Ensure SAN resources are segregated properly" -Status "INFO" -Details "Single path configuration or no SAN storage"
         }
@@ -1579,7 +1579,7 @@ function Test-Section6-Controls {
         if ($sharedDatastores.Count -eq 0) {
             Add-CISResult -ControlID "CIS-6.3.1" -Section $section -Title "Ensure datastore access is controlled" -Status "PASS" -Details "No shared datastores or proper access control"
         } else {
-            Add-CISResult -ControlID "CIS-6.3.1" -Section $section -Title "Ensure datastore access is controlled" -Status "REVIEW" -Details "Shared datastores: $($sharedDatastores -join ', ')" -Recommendation "Verify datastore access permissions are properly configured"
+            Add-CISResult -ControlID "CIS-6.3.1" -Section $section -Title "Ensure datastore access is controlled" -Status "REVIEW" -Details "Shared datastores: $($sharedDatastores -join ', ')" -Recommendation "Verify datastore access"
         }
     } catch {
         Add-CISResult -ControlID "CIS-6.3.1" -Section $section -Title "Ensure datastore access is controlled" -Status "ERROR" -Details $_.Exception.Message
@@ -1601,7 +1601,7 @@ function Test-Section6-Controls {
         if ($encryptedVMs.Count -eq $vms.Count) {
             Add-CISResult -ControlID "CIS-6.3.2" -Section $section -Title "Ensure storage encryption is enabled" -Status "PASS" -Details "All VMs are encrypted"
         } elseif ($encryptedVMs.Count -gt 0) {
-            Add-CISResult -ControlID "CIS-6.3.2" -Section $section -Title "Ensure storage encryption is enabled" -Status "REVIEW" -Details "$($encryptedVMs.Count)/$($vms.Count) VMs encrypted" -Recommendation "Consider enabling encryption for all sensitive VMs"
+            Add-CISResult -ControlID "CIS-6.3.2" -Section $section -Title "Ensure storage encryption is enabled" -Status "REVIEW" -Details "$($encryptedVMs.Count)/$($vms.Count) VMs encrypted" -Recommendation "Enable VM encryption"
         } else {
             Add-CISResult -ControlID "CIS-6.3.2" -Section $section -Title "Ensure storage encryption is enabled" -Status "INFO" -Details "No VM encryption detected" -Recommendation "Consider enabling VM encryption for sensitive workloads"
         }
@@ -1673,7 +1673,7 @@ function Test-Section7-Controls {
         if ($nonCompliantSwitches.Count -eq 0) {
             Add-CISResult -ControlID "CIS-7.1.2" -Section $section -Title "Ensure vSwitch forged transmits policy is set to reject" -Status "PASS" -Details "Forged transmits rejected on all switches"
         } else {
-            Add-CISResult -ControlID "CIS-7.1.2" -Section $section -Title "Ensure vSwitch forged transmits policy is set to reject" -Status "FAIL" -Details "Forged transmits allowed: $($nonCompliantSwitches -join ', ')" -Recommendation "Set forged transmits policy to reject"
+            Add-CISResult -ControlID "CIS-7.1.2" -Section $section -Title "Ensure vSwitch forged transmits policy is set to reject" -Status "FAIL" -Details "Forged transmits allowed: $($nonCompliantSwitches -join ', ')" -Recommendation "Reject forged transmits"
         }
     } catch {
         Add-CISResult -ControlID "CIS-7.1.2" -Section $section -Title "Ensure vSwitch forged transmits policy is set to reject" -Status "ERROR" -Details $_.Exception.Message
@@ -1695,7 +1695,7 @@ function Test-Section7-Controls {
         if ($nonCompliantSwitches.Count -eq 0) {
             Add-CISResult -ControlID "CIS-7.1.3" -Section $section -Title "Ensure vSwitch MAC address change policy is set to reject" -Status "PASS" -Details "MAC changes rejected on all switches"
         } else {
-            Add-CISResult -ControlID "CIS-7.1.3" -Section $section -Title "Ensure vSwitch MAC address change policy is set to reject" -Status "FAIL" -Details "MAC changes allowed: $($nonCompliantSwitches -join ', ')" -Recommendation "Set MAC address change policy to reject"
+            Add-CISResult -ControlID "CIS-7.1.3" -Section $section -Title "Ensure vSwitch MAC address change policy is set to reject" -Status "FAIL" -Details "MAC changes allowed: $($nonCompliantSwitches -join ', ')" -Recommendation "Reject MAC changes"
         }
     } catch {
         Add-CISResult -ControlID "CIS-7.1.3" -Section $section -Title "Ensure vSwitch MAC address change policy is set to reject" -Status "ERROR" -Details $_.Exception.Message
@@ -1717,7 +1717,7 @@ function Test-Section7-Controls {
         if ($nonCompliantSwitches.Count -eq 0) {
             Add-CISResult -ControlID "CIS-7.1.4" -Section $section -Title "Ensure vSwitch promiscuous mode policy is set to reject" -Status "PASS" -Details "Promiscuous mode rejected on all switches"
         } else {
-            Add-CISResult -ControlID "CIS-7.1.4" -Section $section -Title "Ensure vSwitch promiscuous mode policy is set to reject" -Status "FAIL" -Details "Promiscuous mode allowed: $($nonCompliantSwitches -join ', ')" -Recommendation "Set promiscuous mode policy to reject"
+            Add-CISResult -ControlID "CIS-7.1.4" -Section $section -Title "Ensure vSwitch promiscuous mode policy is set to reject" -Status "FAIL" -Details "Promiscuous mode allowed: $($nonCompliantSwitches -join ', ')" -Recommendation "Reject promiscuous mode"
         }
     } catch {
         Add-CISResult -ControlID "CIS-7.1.4" -Section $section -Title "Ensure vSwitch promiscuous mode policy is set to reject" -Status "ERROR" -Details $_.Exception.Message
@@ -1735,7 +1735,7 @@ function Test-Section7-Controls {
         if ($nativeVlanGroups.Count -eq 0) {
             Add-CISResult -ControlID "CIS-7.2.2" -Section $section -Title "Ensure port groups are not configured to native VLAN" -Status "PASS" -Details "No port groups using native VLAN 1"
         } else {
-            Add-CISResult -ControlID "CIS-7.2.2" -Section $section -Title "Ensure port groups are not configured to native VLAN" -Status "FAIL" -Details "Native VLAN usage: $($nativeVlanGroups -join ', ')" -Recommendation "Change port groups from native VLAN 1"
+            Add-CISResult -ControlID "CIS-7.2.2" -Section $section -Title "Ensure port groups are not configured to native VLAN" -Status "FAIL" -Details "Native VLAN usage: $($nativeVlanGroups -join ', ')" -Recommendation "Avoid native VLAN"
         }
     } catch {
         Add-CISResult -ControlID "CIS-7.2.2" -Section $section -Title "Ensure port groups are not configured to native VLAN" -Status "ERROR" -Details $_.Exception.Message
@@ -1754,7 +1754,7 @@ function Test-Section7-Controls {
         if ($reservedVlanGroups.Count -eq 0) {
             Add-CISResult -ControlID "CIS-7.2.3" -Section $section -Title "Ensure port groups are not configured to reserved VLANs" -Status "PASS" -Details "No port groups using reserved VLANs"
         } else {
-            Add-CISResult -ControlID "CIS-7.2.3" -Section $section -Title "Ensure port groups are not configured to reserved VLANs" -Status "FAIL" -Details "Reserved VLAN usage: $($reservedVlanGroups -join ', ')" -Recommendation "Change port groups from reserved VLAN IDs"
+            Add-CISResult -ControlID "CIS-7.2.3" -Section $section -Title "Ensure port groups are not configured to reserved VLANs" -Status "FAIL" -Details "Reserved VLAN usage: $($reservedVlanGroups -join ', ')" -Recommendation "Avoid reserved VLANs"
         }
     } catch {
         Add-CISResult -ControlID "CIS-7.2.3" -Section $section -Title "Ensure port groups are not configured to reserved VLANs" -Status "ERROR" -Details $_.Exception.Message
@@ -1968,7 +1968,7 @@ function Test-Section8-Controls {
         if ($vmsWithOldTools.Count -eq 0) {
             Add-CISResult -ControlID "CIS-8.1.2" -Section $section -Title "Ensure VM tools are up to date" -Status "PASS" -Details "All VM tools are current"
         } else {
-            Add-CISResult -ControlID "CIS-8.1.2" -Section $section -Title "Ensure VM tools are up to date" -Status "REVIEW" -Details "Old tools: $($vmsWithOldTools -join ', ')" -Recommendation "Update VMware Tools on all VMs"
+            Add-CISResult -ControlID "CIS-8.1.2" -Section $section -Title "Ensure VM tools are up to date" -Status "REVIEW" -Details "Old tools: $($vmsWithOldTools -join ', ')" -Recommendation "Update VMware Tools"
         }
     } catch {
         Add-CISResult -ControlID "CIS-8.1.2" -Section $section -Title "Ensure VM tools are up to date" -Status "ERROR" -Details $_.Exception.Message
@@ -1987,7 +1987,7 @@ function Test-Section8-Controls {
         if ($nonCompliantVMs.Count -eq 0) {
             Add-CISResult -ControlID "CIS-8.2.2" -Section $section -Title "Ensure VM console copy operations are disabled" -Status "PASS" -Details "Copy operations disabled on all VMs"
         } else {
-            Add-CISResult -ControlID "CIS-8.2.2" -Section $section -Title "Ensure VM console copy operations are disabled" -Status "FAIL" -Details "Copy enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable console copy operations"
+            Add-CISResult -ControlID "CIS-8.2.2" -Section $section -Title "Ensure VM console copy operations are disabled" -Status "FAIL" -Details "Copy enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable copy operations"
         }
     } catch {
         Add-CISResult -ControlID "CIS-8.2.2" -Section $section -Title "Ensure VM console copy operations are disabled" -Status "ERROR" -Details $_.Exception.Message
@@ -2006,7 +2006,7 @@ function Test-Section8-Controls {
         if ($nonCompliantVMs.Count -eq 0) {
             Add-CISResult -ControlID "CIS-8.2.3" -Section $section -Title "Ensure VM console drag and drop operations are disabled" -Status "PASS" -Details "Drag and drop disabled on all VMs"
         } else {
-            Add-CISResult -ControlID "CIS-8.2.3" -Section $section -Title "Ensure VM console drag and drop operations are disabled" -Status "FAIL" -Details "Drag/drop enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable console drag and drop operations"
+            Add-CISResult -ControlID "CIS-8.2.3" -Section $section -Title "Ensure VM console drag and drop operations are disabled" -Status "FAIL" -Details "Drag/drop enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable drag and drop"
         }
     } catch {
         Add-CISResult -ControlID "CIS-8.2.3" -Section $section -Title "Ensure VM console drag and drop operations are disabled" -Status "ERROR" -Details $_.Exception.Message
@@ -2025,7 +2025,7 @@ function Test-Section8-Controls {
         if ($nonCompliantVMs.Count -eq 0) {
             Add-CISResult -ControlID "CIS-8.2.4" -Section $section -Title "Ensure VM console paste operations are disabled" -Status "PASS" -Details "Paste operations disabled on all VMs"
         } else {
-            Add-CISResult -ControlID "CIS-8.2.4" -Section $section -Title "Ensure VM console paste operations are disabled" -Status "FAIL" -Details "Paste enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable console paste operations"
+            Add-CISResult -ControlID "CIS-8.2.4" -Section $section -Title "Ensure VM console paste operations are disabled" -Status "FAIL" -Details "Paste enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable paste operations"
         }
     } catch {
         Add-CISResult -ControlID "CIS-8.2.4" -Section $section -Title "Ensure VM console paste operations are disabled" -Status "ERROR" -Details $_.Exception.Message
@@ -2044,7 +2044,7 @@ function Test-Section8-Controls {
         if ($nonCompliantVMs.Count -eq 0) {
             Add-CISResult -ControlID "CIS-8.2.5" -Section $section -Title "Ensure VM console GUI options are disabled" -Status "PASS" -Details "GUI options properly configured"
         } else {
-            Add-CISResult -ControlID "CIS-8.2.5" -Section $section -Title "Ensure VM console GUI options are disabled" -Status "FAIL" -Details "GUI options enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable console GUI options"
+            Add-CISResult -ControlID "CIS-8.2.5" -Section $section -Title "Ensure VM console GUI options are disabled" -Status "FAIL" -Details "GUI options enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable GUI options"
         }
     } catch {
         Add-CISResult -ControlID "CIS-8.2.5" -Section $section -Title "Ensure VM console GUI options are disabled" -Status "ERROR" -Details $_.Exception.Message
@@ -2064,7 +2064,7 @@ function Test-Section8-Controls {
         if ($vmsWithConnectedCD.Count -eq 0) {
             Add-CISResult -ControlID "CIS-8.3.2" -Section $section -Title "Ensure unnecessary CD/DVD devices are disconnected" -Status "PASS" -Details "No connected CD/DVD devices"
         } else {
-            Add-CISResult -ControlID "CIS-8.3.2" -Section $section -Title "Ensure unnecessary CD/DVD devices are disconnected" -Status "FAIL" -Details "Connected CD/DVD: $($vmsWithConnectedCD -join ', ')" -Recommendation "Disconnect unnecessary CD/DVD devices"
+            Add-CISResult -ControlID "CIS-8.3.2" -Section $section -Title "Ensure unnecessary CD/DVD devices are disconnected" -Status "FAIL" -Details "Connected CD/DVD: $($vmsWithConnectedCD -join ', ')" -Recommendation "Remove CD/DVD devices"
         }
     } catch {
         Add-CISResult -ControlID "CIS-8.3.2" -Section $section -Title "Ensure unnecessary CD/DVD devices are disconnected" -Status "ERROR" -Details $_.Exception.Message
@@ -2083,7 +2083,7 @@ function Test-Section8-Controls {
         if ($vmsWithParallel.Count -eq 0) {
             Add-CISResult -ControlID "CIS-8.3.3" -Section $section -Title "Ensure unnecessary parallel ports are disconnected" -Status "PASS" -Details "No parallel ports found"
         } else {
-            Add-CISResult -ControlID "CIS-8.3.3" -Section $section -Title "Ensure unnecessary parallel ports are disconnected" -Status "FAIL" -Details "Parallel ports: $($vmsWithParallel -join ', ')" -Recommendation "Remove unnecessary parallel ports"
+            Add-CISResult -ControlID "CIS-8.3.3" -Section $section -Title "Ensure unnecessary parallel ports are disconnected" -Status "FAIL" -Details "Parallel ports: $($vmsWithParallel -join ', ')" -Recommendation "Remove parallel ports"
         }
     } catch {
         Add-CISResult -ControlID "CIS-8.3.3" -Section $section -Title "Ensure unnecessary parallel ports are disconnected" -Status "ERROR" -Details $_.Exception.Message
@@ -2102,7 +2102,7 @@ function Test-Section8-Controls {
         if ($vmsWithSerial.Count -eq 0) {
             Add-CISResult -ControlID "CIS-8.3.4" -Section $section -Title "Ensure unnecessary serial ports are disabled" -Status "PASS" -Details "No serial ports found"
         } else {
-            Add-CISResult -ControlID "CIS-8.3.4" -Section $section -Title "Ensure unnecessary serial ports are disabled" -Status "REVIEW" -Details "Serial ports: $($vmsWithSerial -join ', ')" -Recommendation "Review and disable unnecessary serial ports"
+            Add-CISResult -ControlID "CIS-8.3.4" -Section $section -Title "Ensure unnecessary serial ports are disabled" -Status "REVIEW" -Details "Serial ports: $($vmsWithSerial -join ', ')" -Recommendation "Remove serial ports"
         }
     } catch {
         Add-CISResult -ControlID "CIS-8.3.4" -Section $section -Title "Ensure unnecessary serial ports are disabled" -Status "ERROR" -Details $_.Exception.Message
@@ -2121,7 +2121,7 @@ function Test-Section8-Controls {
         if ($vmsWithUSB.Count -eq 0) {
             Add-CISResult -ControlID "CIS-8.3.5" -Section $section -Title "Ensure unnecessary USB devices are disconnected" -Status "PASS" -Details "No USB controllers found"
         } else {
-            Add-CISResult -ControlID "CIS-8.3.5" -Section $section -Title "Ensure unnecessary USB devices are disconnected" -Status "REVIEW" -Details "USB controllers: $($vmsWithUSB -join ', ')" -Recommendation "Review and remove unnecessary USB devices"
+            Add-CISResult -ControlID "CIS-8.3.5" -Section $section -Title "Ensure unnecessary USB devices are disconnected" -Status "REVIEW" -Details "USB controllers: $($vmsWithUSB -join ', ')" -Recommendation "Remove USB devices"
         }
     } catch {
         Add-CISResult -ControlID "CIS-8.3.5" -Section $section -Title "Ensure unnecessary USB devices are disconnected" -Status "ERROR" -Details $_.Exception.Message
@@ -2140,7 +2140,7 @@ function Test-Section8-Controls {
         if ($nonCompliantVMs.Count -eq 0) {
             Add-CISResult -ControlID "CIS-8.4.1" -Section $section -Title "Ensure unauthorized modification of devices is disabled" -Status "PASS" -Details "Device modification disabled on all VMs"
         } else {
-            Add-CISResult -ControlID "CIS-8.4.1" -Section $section -Title "Ensure unauthorized modification of devices is disabled" -Status "FAIL" -Details "Device mod enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable device modification"
+            Add-CISResult -ControlID "CIS-8.4.1" -Section $section -Title "Ensure unauthorized modification of devices is disabled" -Status "FAIL" -Details "Device mod enabled on: $($nonCompliantVMs -join ', ')" -Recommendation "Disable device changes"
         }
     } catch {
         Add-CISResult -ControlID "CIS-8.4.1" -Section $section -Title "Ensure unauthorized modification of devices is disabled" -Status "ERROR" -Details $_.Exception.Message
