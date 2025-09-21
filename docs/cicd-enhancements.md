@@ -1,0 +1,1 @@
+# CI/CD Pipeline Enhancements\n\nEnhancements to support multi-platform testing and validation.\n\n## Testing Matrix\n- Windows Server 2022\n- Ubuntu 22.04 LTS\n- macOS Ventura\n\n## Validation Steps\n- PowerShell syntax validation\n- Cross-platform compatibility\n- Performance benchmarking
