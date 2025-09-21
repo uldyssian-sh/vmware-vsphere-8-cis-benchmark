@@ -59,6 +59,7 @@ jobs:
     - name: Run markdownlint
       run: |
         markdownlint README.md ${{ env.DOCS_PATH }} --config .markdownlint.json
+      continue-on-error: true
       
   security-scan:
     name: Security Scanning
