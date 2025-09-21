@@ -1,0 +1,1 @@
+# Performance Optimization Guide\n\nOptimization strategies for environments with 2000+ virtual machines.\n\n## Batch Processing\n- VM control batching strategies\n- Memory optimization techniques\n- PowerCLI query optimization\n\n## Performance Targets\n- Enterprise environments: < 120 minutes\n- Memory usage: < 2GB peak\n- CPU utilization: < 80% average
