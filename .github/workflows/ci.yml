@@ -51,7 +51,9 @@ jobs:
       run: npm install -g markdownlint-cli
       
     - name: Run markdownlint
-      run: markdownlint README.md docs/ --config .markdownlint.json || true
+      run: |
+        markdownlint README.md docs/ --config .markdownlint.json
+      continue-on-error: true
       
   security-scan:
     name: Security Scanning
@@ -89,7 +91,9 @@ jobs:
       run: npm install -g markdown-link-check
       
     - name: Check links in README
-      run: markdown-link-check README.md --config .github/mlc_config.json || true
+      run: |
+        markdown-link-check README.md --config .github/mlc_config.json
+      continue-on-error: true
       
   validate-structure:
     name: Repository Structure Validation
@@ -238,10 +242,12 @@ jobs:
         
         echo "✅ Documentation generated successfully"
         
-    - name: Commit documentation
+    - name: Create documentation PR
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add docs/
-        git diff --staged --quiet || git commit -m "📚 Auto-update documentation [skip ci]"
-        git push || true
+        if git diff --quiet docs/; then
+          echo "No documentation changes to commit"
+        else
+          echo "Documentation changes detected - would create PR in production"
+          echo "Changes:"
+          git diff --name-only docs/
+        fi
