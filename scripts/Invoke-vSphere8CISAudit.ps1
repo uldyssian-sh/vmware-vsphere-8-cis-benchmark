@@ -51,6 +51,9 @@ $script:CompletedControls = 0
 $script:Results = @()
 $script:StartTime = Get-Date
 $script:vCenterConnection = $null
+$script:LastProgressUpdate = Get-Date
+$script:EstimatedTotalTime = 0
+$script:ProgressHistory = @()
 
 # CIS Control Sections
 $script:CISSections = @{
@@ -73,9 +76,59 @@ function Write-ProgressUpdate {
         [int]$PercentComplete
     )
     
-    Write-Progress -Activity $Activity -Status $Status -PercentComplete $PercentComplete
+    $currentTime = Get-Date
+    $elapsedTime = ($currentTime - $script:StartTime).TotalMinutes
+    
+    # Calculate estimated time remaining
+    if ($PercentComplete -gt 0) {
+        $estimatedTotalMinutes = ($elapsedTime / $PercentComplete) * 100
+        $remainingMinutes = $estimatedTotalMinutes - $elapsedTime
+        
+        # Store progress history for better estimation
+        $script:ProgressHistory += @{
+            Time = $currentTime
+            Percent = $PercentComplete
+            Elapsed = $elapsedTime
+        }
+        
+        # Use recent progress for more accurate estimation
+        if ($script:ProgressHistory.Count -gt 5) {
+            $recentProgress = $script:ProgressHistory | Select-Object -Last 5
+            $avgRate = ($recentProgress[-1].Percent - $recentProgress[0].Percent) / ($recentProgress[-1].Elapsed - $recentProgress[0].Elapsed)
+            if ($avgRate -gt 0) {
+                $remainingMinutes = (100 - $PercentComplete) / $avgRate
+            }
+        }
+    } else {
+        $remainingMinutes = 0
+    }
+    
+    # Format time remaining
+    $timeRemaining = ""
+    if ($remainingMinutes -gt 0) {
+        if ($remainingMinutes -gt 60) {
+            $hours = [math]::Floor($remainingMinutes / 60)
+            $minutes = [math]::Floor($remainingMinutes % 60)
+            $timeRemaining = "${hours}h ${minutes}m remaining"
+        } else {
+            $minutes = [math]::Floor($remainingMinutes)
+            $seconds = [math]::Floor(($remainingMinutes - $minutes) * 60)
+            $timeRemaining = "${minutes}m ${seconds}s remaining"
+        }
+    }
+    
+    # Enhanced progress bar
     $progressBar = "█" * [math]::Floor($PercentComplete / 5) + "░" * (20 - [math]::Floor($PercentComplete / 5))
-    Write-Host "[$progressBar] $PercentComplete% - $Status" -ForegroundColor Cyan
+    $elapsedFormatted = "{0:F1}m" -f $elapsedTime
+    
+    Write-Progress -Activity $Activity -Status "$Status - $timeRemaining" -PercentComplete $PercentComplete
+    
+    # Color-coded progress display
+    $progressColor = if ($PercentComplete -lt 25) { "Yellow" } elseif ($PercentComplete -lt 75) { "Cyan" } else { "Green" }
+    Write-Host "[$progressBar] $PercentComplete% | Elapsed: $elapsedFormatted | $timeRemaining" -ForegroundColor $progressColor
+    Write-Host "Current: $Status" -ForegroundColor Gray
+    
+    $script:LastProgressUpdate = $currentTime
 }
 
 function Add-CISResult {
@@ -128,6 +181,35 @@ function Initialize-Environment {
     
     Write-Host "[INIT] PowerCLI ready" -ForegroundColor Green
     return $true
+}
+
+function Get-EnvironmentEstimate {
+    try {
+        $hostCount = (Get-VMHost).Count
+        $vmCount = (Get-VM).Count
+        
+        Write-Host "[INFO] Environment detected: $hostCount hosts, $vmCount VMs" -ForegroundColor Cyan
+        
+        # Estimate total time based on environment size
+        $estimatedMinutes = 0
+        if ($hostCount -le 3 -and $vmCount -le 20) {
+            $estimatedMinutes = 7  # Small lab
+            Write-Host "[INFO] Estimated completion time: 5-8 minutes (Small Lab)" -ForegroundColor Green
+        } elseif ($hostCount -le 10 -and $vmCount -le 200) {
+            $estimatedMinutes = 20  # Medium enterprise
+            Write-Host "[INFO] Estimated completion time: 15-25 minutes (Medium Enterprise)" -ForegroundColor Yellow
+        } else {
+            $estimatedMinutes = 45  # Large enterprise
+            Write-Host "[INFO] Estimated completion time: 35-60 minutes (Large Enterprise)" -ForegroundColor Red
+        }
+        
+        $script:EstimatedTotalTime = $estimatedMinutes
+        return $true
+    } catch {
+        Write-Host "[WARN] Could not estimate environment size: $($_.Exception.Message)" -ForegroundColor Yellow
+        $script:EstimatedTotalTime = 20  # Default estimate
+        return $false
+    }
 }
 
 function Connect-vCenterServer {
@@ -2528,6 +2610,9 @@ function Main {
     Write-Host "`n[START] Beginning COMPLETE CIS Benchmark audit..." -ForegroundColor Yellow
     Write-Host "[INFO] Total controls to assess: $script:TotalControls (Complete CIS Coverage)" -ForegroundColor Gray
     Write-Host "[INFO] All operations are read-only - no changes will be made" -ForegroundColor Green
+    
+    # Get environment size and time estimate
+    Get-EnvironmentEstimate | Out-Null
     Write-Host ""
     
     try {
