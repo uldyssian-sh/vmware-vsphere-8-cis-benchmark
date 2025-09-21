@@ -322,7 +322,7 @@ function Test-Section1-Controls {
     
     # CIS-1.3.1: Ensure default salt is configured properly
     try {
-        foreach ($host in Get-VMHost) {
+        foreach ($esxiHost in Get-VMHost) {
             Add-CISResult -ControlID "CIS-1.3.1" -Section $section -Title "Ensure default salt is configured properly" -Status "REVIEW" -Details "Manual verification required" -Recommendation "Verify salt config"
         }
     } catch {
@@ -528,7 +528,7 @@ function Test-Section2-Controls {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $firewallPolicy = Get-VMHostFirewallDefaultPolicy -VMHost $host
+            $firewallPolicy = Get-VMHostFirewallDefaultPolicy -VMHost $esxiHost
             if ($firewallPolicy.AllowIncoming -eq $true) {
                 $nonCompliantHosts += $esxiHost.Name
             }
@@ -665,7 +665,7 @@ function Test-Section2-Controls {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $snmpConfig = Get-VMHostSnmp -VMHost $host
+            $snmpConfig = Get-VMHostSnmp -VMHost $esxiHost
             if ($snmpConfig.Enabled -eq $true) {
                 if ($snmpConfig.ReadOnlyCommunity -eq "public" -or [string]::IsNullOrEmpty($snmpConfig.ReadOnlyCommunity)) {
                     $nonCompliantHosts += "$($esxiHost.Name):Weak community string"
@@ -1490,7 +1490,7 @@ function Test-Section6-Controls {
         $iscsiHosts = @()
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $iscsiHba = Get-VMHostHba -VMHost $host -Type iSCSI -ErrorAction SilentlyContinue
+            $iscsiHba = Get-VMHostHba -VMHost $esxiHost -Type iSCSI -ErrorAction SilentlyContinue
             if ($iscsiHba) {
                 $iscsiHosts += $esxiHost.Name
                 foreach ($hba in $iscsiHba) {
@@ -1518,7 +1518,7 @@ function Test-Section6-Controls {
         $chapSecrets = @{}
         $duplicateSecrets = @()
         foreach ($esxiHost in $esxiHosts) {
-            $iscsiHba = Get-VMHostHba -VMHost $host -Type iSCSI -ErrorAction SilentlyContinue
+            $iscsiHba = Get-VMHostHba -VMHost $esxiHost -Type iSCSI -ErrorAction SilentlyContinue
             if ($iscsiHba) {
                 foreach ($hba in $iscsiHba) {
                     $chapConfig = $hba.AuthenticationProperties
@@ -1549,7 +1549,7 @@ function Test-Section6-Controls {
         $esxiHosts = Get-VMHost
         $hostsWithMultiplePaths = @()
         foreach ($esxiHost in $esxiHosts) {
-            $scsiLuns = Get-ScsiLun -VMHost $host -LunType disk -ErrorAction SilentlyContinue
+            $scsiLuns = Get-ScsiLun -VMHost $esxiHost -LunType disk -ErrorAction SilentlyContinue
             foreach ($lun in $scsiLuns) {
                 $paths = Get-ScsiLunPath -ScsiLun $lun
                 if ($paths.Count -gt 1) {
