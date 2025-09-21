@@ -1,0 +1,1 @@
+# VDS Security Assessment Procedures\n\nEnhanced security assessments for vSphere Distributed Switches.\n\n## Assessment Areas\n- VDS health monitoring\n- Security policy validation\n- Port group isolation\n- Network I/O controls\n\n## Advanced Features\n- LACP configuration checks\n- Load balancing validation\n- Traffic shaping policies
