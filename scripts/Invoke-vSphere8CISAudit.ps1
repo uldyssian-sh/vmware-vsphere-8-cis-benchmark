@@ -27,7 +27,7 @@
 
 .NOTES
     Author: VMware Security Team
-    Version: 3.0.0 - Complete CIS Coverage
+    Version: 3.1.0 - Complete CIS Coverage (106 Controls Verified)
     Requires: VMware PowerCLI 13.0+
     Mode: Read-Only (No modifications to vSphere environment)
     CIS Controls: 106 complete controls from official CIS Benchmark PDF

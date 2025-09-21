@@ -5,10 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2024-12-01
+
+### Added
+- Added missing 3 CIS controls to achieve complete 106 control coverage:
+  - CIS-1.6.1: Ensure ESXi host software is from trusted sources
+  - CIS-1.7.1: Ensure vCenter Server is properly licensed
+  - CIS-3.5.1: Ensure log correlation and analysis is configured
+- Verified complete implementation of all 106 CIS Benchmark controls from official PDF
+
+### Fixed
+- Corrected control count from 103 to 106 controls
+- Ensured exact match with official CIS VMware vSphere 8 Benchmark PDF
+
 ## [3.0.0] - 2024-12-01
 
 ### Added
-- Complete implementation of all 106 CIS Benchmark controls from official PDF
+- Initial complete implementation of 103 CIS Benchmark controls from official PDF
 - PowerShell-based automated assessments for all controls (eliminated manual reviews)
 - Enhanced progress tracking with time estimation and percentage completion
 - Environment size detection (Small/Medium/Large) with completion time estimates

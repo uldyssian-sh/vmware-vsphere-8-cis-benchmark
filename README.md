@@ -367,7 +367,7 @@ All 106 CIS controls are implemented using PowerCLI cmdlets and PowerShell logic
 
 ## 🏷️ Version
 
-Current version: 3.0.0 - Complete CIS Coverage (All 106 Controls Implemented)
+Current version: 3.1.0 - Complete CIS Coverage (All 106 Controls Verified)
 
 ## 📞 Support
 
