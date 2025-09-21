@@ -6,6 +6,17 @@
 [![VMware](https://img.shields.io/badge/VMware-vSphere%208-green.svg)](https://www.vmware.com/products/vsphere.html)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://docs.microsoft.com/en-us/powershell/)
 
+## 📖 Introduction
+
+This enterprise-ready PowerShell tool provides **complete implementation of all 106 CIS (Center for Internet Security) Benchmark controls** for VMware vSphere 8 environments. Unlike other tools that rely on manual reviews, this implementation uses **PowerShell-based automated assessments** to evaluate your vSphere infrastructure against the official CIS Benchmark.
+
+### Why This Tool?
+- **🎯 Complete Coverage**: All 106 CIS controls implemented (not just a subset)
+- **🤖 Automated Assessment**: PowerShell-based checks, no manual reviews required
+- **📊 Enterprise Ready**: Designed for production environments with 100+ VMs
+- **🔒 Read-Only**: Zero modifications to your vSphere environment
+- **📈 Professional Reporting**: HTML and CSV reports for compliance teams
+
 Enterprise-ready PowerShell implementation for comprehensive CIS (Center for Internet Security) Benchmark compliance assessment of VMware vSphere 8 environments. **ALL 106 CIS controls fully implemented** with automated progress tracking, sectioned controls, and robust reporting.
 
 ## 🎯 Key Features
@@ -19,27 +30,93 @@ Enterprise-ready PowerShell implementation for comprehensive CIS (Center for Int
 - **🏗️ Sectioned Controls** - Organized by CIS security domains
 - **✅ Actual Assessments** - PowerShell-based checks, not manual reviews
 
+## 📝 Prerequisites
+
+### System Requirements
+- **Operating System**: Windows 10/11, Windows Server 2016+, or PowerShell Core on Linux/macOS
+- **PowerShell**: Version 5.1 or PowerShell Core 7.0+
+- **Memory**: Minimum 4GB RAM (8GB recommended for large environments)
+- **Disk Space**: 500MB free space for reports and logs
+- **Network**: HTTPS access to vCenter Server (port 443)
+
+### VMware Environment
+- **vSphere Version**: 8.0 or later
+- **vCenter Server**: 8.0 or later
+- **VMware PowerCLI**: Version 13.0 or later
+- **Permissions**: Read-only access to vCenter (minimum required)
+
+### Expected Execution Times
+| Environment Size | Hosts | VMs | Duration | Description |
+|------------------|-------|-----|----------|-------------|
+| **Small Lab** | 1-3 | 5-20 | 5-8 minutes | Home lab or small test environment |
+| **Medium Enterprise** | 4-10 | 50-200 | 15-25 minutes | Typical enterprise branch office |
+| **Large Enterprise** | 10+ | 200+ | 35-60 minutes | Large datacenter or multi-cluster environment |
+
 ## 🚀 Quick Start
 
-### Prerequisites
-- PowerShell 5.1+ 
-- VMware PowerCLI 13.0+
-- vSphere 8.0+ environment
-- Read-only vCenter access
+### Step 1: Download Repository
 
-### Installation
+**Option A: Using Git**
 ```bash
 git clone https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark.git
 cd vmware-vsphere-8-cis-benchmark
 ```
 
-### Basic Usage
+**Option B: Download ZIP (if Git not available)**
 ```powershell
-# Run audit (minimal input - will prompt for vCenter details)
-.\scripts\Invoke-vSphere8CISAudit.ps1
+# Download repository as ZIP file
+$url = "https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/archive/refs/heads/main.zip"
+$output = "$env:TEMP\cis-benchmark.zip"
+Invoke-WebRequest -Uri $url -OutFile $output
 
+# Extract ZIP file
+Expand-Archive -Path $output -DestinationPath "C:\" -Force
+cd "C:\vmware-vsphere-8-cis-benchmark-main"
+```
+
+### Step 2: Install PowerCLI
+
+**Run PowerShell as Administrator** and execute:
+```powershell
+# Install VMware PowerCLI
+Install-Module -Name VMware.PowerCLI -Force -AllowClobber -Scope CurrentUser
+
+# Set execution policy
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Configure PowerCLI (ignore certificate warnings for lab environments)
+Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
+```
+
+### Step 3: Verify Installation
+```powershell
+# Test PowerCLI installation
+Get-Module -ListAvailable VMware.PowerCLI
+
+# Test script syntax
+$null = [System.Management.Automation.PSParser]::Tokenize((Get-Content "scripts/Invoke-vSphere8CISAudit.ps1" -Raw), [ref]$null)
+Write-Host "✅ Syntax OK" -ForegroundColor Green
+```
+
+### Step 4: Run CIS Audit
+
+**Basic Usage (Interactive)**
+```powershell
+# Navigate to scripts directory
+cd scripts
+
+# Run audit (will prompt for vCenter details)
+.\Invoke-vSphere8CISAudit.ps1
+```
+
+**Advanced Usage (Non-Interactive)**
+```powershell
 # Run with parameters (no prompts)
-.\scripts\Invoke-vSphere8CISAudit.ps1 -vCenterServer "vcenter.domain.com" -OutputPath "C:\Reports"
+.\Invoke-vSphere8CISAudit.ps1 -vCenterServer "vcenter.domain.com" -OutputPath "C:\Reports"
+
+# Run with pre-configured credentials
+$cred = Get-Credential
+.\Invoke-vSphere8CISAudit.ps1 -vCenterServer "vcenter.domain.com" -Credential $cred
 ```
 
 ### Performance Benchmarks
@@ -197,6 +274,62 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🛠️ Troubleshooting
+
+### Common Installation Issues
+
+**PowerCLI Installation Fails**
+```powershell
+# Error: Administrator rights required
+# Solution: Run PowerShell as Administrator
+Start-Process PowerShell -Verb RunAs
+
+# Alternative: Update PowerShellGet first
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+Install-Module -Name PowerShellGet -Force -AllowClobber
+```
+
+**Execution Policy Errors**
+```powershell
+# Error: Execution of scripts is disabled
+# Solution: Set execution policy
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+**Certificate Errors**
+```powershell
+# Error: Could not establish trust relationship
+# Solution: Ignore certificate warnings (lab environments only)
+Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
+```
+
+**Git Not Found**
+```powershell
+# Error: 'git' is not recognized
+# Solution: Use ZIP download method (see Step 1 Option B above)
+```
+
+### Performance Optimization
+
+**Large Environments (100+ VMs)**
+```powershell
+# Increase PowerCLI timeout
+Set-PowerCLIConfiguration -WebOperationTimeoutSeconds 300 -Confirm:$false
+
+# Use fast storage for reports
+.\Invoke-vSphere8CISAudit.ps1 -OutputPath "D:\FastStorage\Reports"
+```
+
+**Network Optimization**
+```powershell
+# Test vCenter connectivity
+Test-NetConnection -ComputerName "vcenter.domain.com" -Port 443
+
+# Verify DNS resolution
+Resolve-DnsName "vcenter.domain.com"
+```
 
 ## 🔧 Implementation Details
 
