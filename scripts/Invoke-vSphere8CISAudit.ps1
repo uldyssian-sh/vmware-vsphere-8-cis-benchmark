@@ -118,7 +118,7 @@ function Write-ProgressUpdate {
     }
     
     # Enhanced progress bar
-    $progressBar = "█" * [math]::Floor($PercentComplete / 5) + "░" * (20 - [math]::Floor($PercentComplete / 5))
+    $progressBar = "#" * [math]::Floor($PercentComplete / 5) + "-" * (20 - [math]::Floor($PercentComplete / 5))
     $elapsedFormatted = "{0:F1}m" -f $elapsedTime
     
     Write-Progress -Activity $Activity -Status "$Status - $timeRemaining" -PercentComplete $PercentComplete
@@ -2701,6 +2701,10 @@ function Main {
         
         # Display final summary
         Show-FinalSummary -Statistics $reportResults.Statistics -ReportPaths $reportResults
+        
+        # Auto-open HTML report
+        Write-Host "`n[REPORT] Opening HTML report in default browser..." -ForegroundColor Green
+        Start-Process $reportResults.HtmlReport
         
     }
     catch {
