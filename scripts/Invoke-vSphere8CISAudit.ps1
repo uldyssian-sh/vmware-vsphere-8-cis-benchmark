@@ -452,6 +452,48 @@ function Test-Section1-Controls {
     } catch {
         Add-CISResult -ControlID "CIS-1.5.3" -Section $section -Title "Ensure vSphere Update Manager is configured" -Status "ERROR" -Details $_.Exception.Message
     }
+    
+    # CIS-1.6.1: Ensure ESXi host software is from trusted sources
+    try {
+        $esxiHosts = Get-VMHost
+        $nonCompliantHosts = @()
+        foreach ($host in $esxiHosts) {
+            try {
+                $esxcli = Get-EsxCli -VMHost $host -V2
+                $softwareProfile = $esxcli.software.profile.get.Invoke()
+                if ($softwareProfile.Vendor -notmatch "VMware|Dell|HPE|Cisco") {
+                    $nonCompliantHosts += "$($host.Name):$($softwareProfile.Vendor)"
+                }
+            } catch {
+                $nonCompliantHosts += "$($host.Name):Check failed"
+            }
+        }
+        if ($nonCompliantHosts.Count -eq 0) {
+            Add-CISResult -ControlID "CIS-1.6.1" -Section $section -Title "Ensure ESXi host software is from trusted sources" -Status "PASS" -Details "All hosts use trusted software sources"
+        } else {
+            Add-CISResult -ControlID "CIS-1.6.1" -Section $section -Title "Ensure ESXi host software is from trusted sources" -Status "REVIEW" -Details "Verify software sources: $($nonCompliantHosts -join ', ')" -Recommendation "Ensure ESXi software is from trusted vendors"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-1.6.1" -Section $section -Title "Ensure ESXi host software is from trusted sources" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-1.7.1: Ensure vCenter Server is properly licensed
+    try {
+        $licenseManager = Get-View -ViewType LicenseManager -ErrorAction SilentlyContinue
+        if ($licenseManager) {
+            $licenses = $licenseManager.Licenses
+            $validLicenses = $licenses | Where-Object { $_.Used -gt 0 -and $_.Total -gt 0 }
+            if ($validLicenses.Count -gt 0) {
+                Add-CISResult -ControlID "CIS-1.7.1" -Section $section -Title "Ensure vCenter Server is properly licensed" -Status "PASS" -Details "Valid licenses detected: $($validLicenses.Count)"
+            } else {
+                Add-CISResult -ControlID "CIS-1.7.1" -Section $section -Title "Ensure vCenter Server is properly licensed" -Status "FAIL" -Details "No valid licenses found" -Recommendation "Ensure proper vSphere licensing"
+            }
+        } else {
+            Add-CISResult -ControlID "CIS-1.7.1" -Section $section -Title "Ensure vCenter Server is properly licensed" -Status "REVIEW" -Details "License manager not accessible" -Recommendation "Verify vCenter licensing configuration"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-1.7.1" -Section $section -Title "Ensure vCenter Server is properly licensed" -Status "ERROR" -Details $_.Exception.Message
+    }
 }
 
 #endregion
@@ -843,6 +885,27 @@ function Test-Section3-Controls {
         }
     } catch {
         Add-CISResult -ControlID "CIS-3.4.2" -Section $section -Title "Ensure audit logs are protected from unauthorized access" -Status "ERROR" -Details $_.Exception.Message
+    }
+    
+    # CIS-3.5.1: Ensure log correlation and analysis is configured
+    try {
+        $esxiHosts = Get-VMHost
+        $hostsWithCorrelation = @()
+        foreach ($host in $esxiHosts) {
+            $logHost = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logHost" -ErrorAction SilentlyContinue
+            $logDir = Get-VMHostAdvancedConfiguration -VMHost $host -Name "Syslog.global.logDir" -ErrorAction SilentlyContinue
+            if (($logHost -and $logHost.Value -ne "") -or ($logDir -and $logDir.Value -ne "")) {
+                $hostsWithCorrelation += $host.Name
+            }
+        }
+        if ($hostsWithCorrelation.Count -eq $esxiHosts.Count) {
+            Add-CISResult -ControlID "CIS-3.5.1" -Section $section -Title "Ensure log correlation and analysis is configured" -Status "PASS" -Details "Log correlation configured on all hosts"
+        } else {
+            $missingHosts = $esxiHosts | Where-Object { $_.Name -notin $hostsWithCorrelation } | Select-Object -ExpandProperty Name
+            Add-CISResult -ControlID "CIS-3.5.1" -Section $section -Title "Ensure log correlation and analysis is configured" -Status "FAIL" -Details "Missing log correlation: $($missingHosts -join ', ')" -Recommendation "Configure centralized logging for log correlation and analysis"
+        }
+    } catch {
+        Add-CISResult -ControlID "CIS-3.5.1" -Section $section -Title "Ensure log correlation and analysis is configured" -Status "ERROR" -Details $_.Exception.Message
     }
 }
 
@@ -2329,6 +2392,8 @@ function Test-Section8-Controls {
     } catch {
         Add-CISResult -ControlID "CIS-8.9.1" -Section $section -Title "Ensure VM encryption is enabled where required" -Status "ERROR" -Details $_.Exception.Message
     }
+    
+
 }
 
 #endregion
