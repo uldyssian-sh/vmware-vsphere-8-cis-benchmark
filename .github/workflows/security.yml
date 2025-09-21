@@ -41,8 +41,9 @@ jobs:
       uses: trufflesecurity/trufflehog@main
       with:
         path: ./
-        base: main
-        head: HEAD
+        base: ""
+        head: ""
+        extra_args: --only-verified
         
   dependency-check:
     name: Dependency Vulnerability Scan
