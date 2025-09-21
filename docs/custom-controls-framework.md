@@ -1,0 +1,1 @@
+# Custom Security Controls Framework\n\nFramework for implementing organization-specific security controls.\n\n## Configuration Format\n- JSON/YAML control definitions\n- Custom control categories\n- Priority and severity levels\n\n## Integration\n- Seamless integration with CIS controls\n- Separate reporting sections\n- Custom remediation guidance
