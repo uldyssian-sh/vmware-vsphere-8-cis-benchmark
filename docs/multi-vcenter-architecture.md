@@ -1,0 +1,1 @@
+# Multi-vCenter Environment Support\n\nArchitecture for supporting multiple vCenter Server assessments.\n\n## Design Principles\n- Parallel processing capabilities\n- Connection pooling optimization\n- Consolidated reporting\n\n## Implementation\n- Concurrent vCenter connections\n- Result aggregation strategies\n- Performance considerations
