@@ -1,0 +1,1 @@
+# Web Dashboard Technical Specifications\n\nTechnical specifications for the interactive compliance dashboard.\n\n## Frontend Technologies\n- HTML5/CSS3/JavaScript\n- Bootstrap responsive framework\n- Chart.js for visualizations\n\n## Backend Architecture\n- PowerShell REST API\n- Authentication integration\n- Role-based access control
