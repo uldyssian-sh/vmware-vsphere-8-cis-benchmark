@@ -2425,8 +2425,10 @@ function Generate-ComplianceReport {
     # Generate HTML report
     $htmlContent = @"
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VMware vSphere 8 Complete CIS Benchmark Audit Report</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f5f5f5; }
@@ -2448,12 +2450,13 @@ function Generate-ComplianceReport {
         .compliance-good { color: #ffc107; }
         .compliance-poor { color: #dc3545; }
         .coverage-badge { background: #28a745; color: white; padding: 5px 10px; border-radius: 15px; font-size: 12px; }
+        .shield-icon { color: #007acc; font-size: 1.2em; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🛡️ VMware vSphere 8 Complete CIS Benchmark Audit Report</h1>
+            <h1><span class="shield-icon">&#x1F6E1;</span> VMware vSphere 8 Complete CIS Benchmark Audit Report</h1>
             <div class="coverage-badge">COMPLETE COVERAGE - All 106 CIS Controls</div>
             <p><strong>Generated:</strong> $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")</p>
             <p><strong>vCenter Server:</strong> $($script:vCenterConnection.Name)</p>
@@ -2461,7 +2464,7 @@ function Generate-ComplianceReport {
         </div>
         
         <div class="summary">
-            <h2>📊 Executive Summary - Complete CIS Benchmark Coverage</h2>
+            <h2>&#x1F4CA; Executive Summary - Complete CIS Benchmark Coverage</h2>
             <div class="stats">
                 <div class="stat-box">
                     <h3 class="$(if($compliancePercentage -ge 90){'compliance-excellent'}elseif($compliancePercentage -ge 75){'compliance-good'}else{'compliance-poor'})">$compliancePercentage%</h3>
@@ -2486,7 +2489,7 @@ function Generate-ComplianceReport {
             </div>
         </div>
         
-        <h2>📋 Complete CIS Benchmark Results by Section</h2>
+        <h2>&#x1F4CB; Complete CIS Benchmark Results by Section</h2>
         <table>
             <tr>
                 <th>Control ID</th>
@@ -2522,7 +2525,7 @@ function Generate-ComplianceReport {
         </table>
         
         <div class="summary">
-            <h3>🎯 Priority Recommendations</h3>
+            <h3>&#x1F3AF; Priority Recommendations</h3>
             <ul>
 "@
     
@@ -2574,7 +2577,7 @@ function Show-FinalSummary {
     Write-Host "🎯 COMPLETE COVERAGE: All 106 CIS Benchmark Controls Assessed" -ForegroundColor Cyan
     
     # Overall Compliance Status
-    Write-Host "`n🎯 OVERALL COMPLIANCE: " -NoNewline -ForegroundColor White
+    Write-Host "`nOVERALL COMPLIANCE: " -NoNewline -ForegroundColor White
     $percentage = $Statistics.CompliancePercentage
     
     if ($percentage -ge 90) {
@@ -2588,56 +2591,56 @@ function Show-FinalSummary {
     }
     
     # Control Results Summary
-    Write-Host "`n📊 COMPLETE CIS CONTROL RESULTS:" -ForegroundColor White
-    Write-Host "  ✅ PASSED:  " -NoNewline -ForegroundColor Green
+    Write-Host "`nCOMPLETE CIS CONTROL RESULTS:" -ForegroundColor White
+    Write-Host "  PASSED:  " -NoNewline -ForegroundColor Green
     Write-Host "$($Statistics.Passed)/$($Statistics.Total)" -ForegroundColor White
     
-    Write-Host "  ❌ FAILED:  " -NoNewline -ForegroundColor Red
+    Write-Host "  FAILED:  " -NoNewline -ForegroundColor Red
     Write-Host "$($Statistics.Failed)/$($Statistics.Total)" -ForegroundColor White
     
-    Write-Host "  ⚠️  REVIEW:  " -NoNewline -ForegroundColor Yellow
+    Write-Host "  REVIEW:  " -NoNewline -ForegroundColor Yellow
     Write-Host "$($Statistics.Review)/$($Statistics.Total)" -ForegroundColor White
     
-    Write-Host "  ℹ️  INFO:    " -NoNewline -ForegroundColor Cyan
+    Write-Host "  INFO:    " -NoNewline -ForegroundColor Cyan
     Write-Host "$($Statistics.Info)/$($Statistics.Total)" -ForegroundColor White
     
-    Write-Host "  ⚡ ERRORS:  " -NoNewline -ForegroundColor Magenta
+    Write-Host "  ERRORS:  " -NoNewline -ForegroundColor Magenta
     Write-Host "$($Statistics.Errors)/$($Statistics.Total)" -ForegroundColor White
     
     # Priority Actions
-    Write-Host "`n🚨 PRIORITY ACTIONS:" -ForegroundColor White
+    Write-Host "`nPRIORITY ACTIONS:" -ForegroundColor White
     
     if ($Statistics.Failed -gt 0) {
-        Write-Host "  🔴 CRITICAL: $($Statistics.Failed) security controls FAILED" -ForegroundColor Red
-        Write-Host "     ⚡ Immediate remediation required!" -ForegroundColor Red
+        Write-Host "  CRITICAL: $($Statistics.Failed) security controls FAILED" -ForegroundColor Red
+        Write-Host "     Immediate remediation required!" -ForegroundColor Red
     }
     
     if ($Statistics.Review -gt 0) {
-        Write-Host "  🟡 REVIEW: $($Statistics.Review) controls need manual review" -ForegroundColor Yellow
+        Write-Host "  REVIEW: $($Statistics.Review) controls need manual review" -ForegroundColor Yellow
     }
     
     if ($Statistics.Errors -gt 0) {
-        Write-Host "  🟣 ERRORS: $($Statistics.Errors) controls had execution errors" -ForegroundColor Magenta
+        Write-Host "  ERRORS: $($Statistics.Errors) controls had execution errors" -ForegroundColor Magenta
     }
     
     if ($Statistics.Failed -eq 0 -and $Statistics.Review -eq 0 -and $Statistics.Errors -eq 0) {
-        Write-Host "  🟢 EXCELLENT: All controls passed successfully!" -ForegroundColor Green
+        Write-Host "  EXCELLENT: All controls passed successfully!" -ForegroundColor Green
     }
     
     # Report Files
-    Write-Host "`n📄 COMPLETE REPORTS GENERATED:" -ForegroundColor White
-    Write-Host "  📊 HTML Report: " -NoNewline -ForegroundColor Cyan
+    Write-Host "`nCOMPLETE REPORTS GENERATED:" -ForegroundColor White
+    Write-Host "  HTML Report: " -NoNewline -ForegroundColor Cyan
     Write-Host "$($ReportPaths.HtmlReport)" -ForegroundColor Gray
-    Write-Host "  📈 CSV Data:    " -NoNewline -ForegroundColor Cyan
+    Write-Host "  CSV Data:    " -NoNewline -ForegroundColor Cyan
     Write-Host "$($ReportPaths.CsvReport)" -ForegroundColor Gray
     
     # Recommendations Summary
     $failedResults = $script:Results | Where-Object { $_.Status -eq "FAIL" }
     if ($failedResults.Count -gt 0) {
-        Write-Host "`n🔧 TOP RECOMMENDATIONS:" -ForegroundColor White
+        Write-Host "`nTOP RECOMMENDATIONS:" -ForegroundColor White
         $topRecommendations = $failedResults | Where-Object { $_.Recommendation -ne "" } | Select-Object -First 5
         foreach ($rec in $topRecommendations) {
-            Write-Host "  • $($rec.ControlID): $($rec.Recommendation)" -ForegroundColor Yellow
+            Write-Host "  - $($rec.ControlID): $($rec.Recommendation)" -ForegroundColor Yellow
         }
     }
     
