@@ -1,0 +1,1 @@
+# Automated Remediation Safety Guidelines\n\nSafety requirements and best practices for automated remediation.\n\n## Safety Checks\n- Pre-remediation validation\n- Configuration backup procedures\n- Rollback mechanisms\n\n## Risk Management\n- Change approval workflows\n- Testing procedures\n- Emergency rollback plans
