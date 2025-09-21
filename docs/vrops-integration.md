@@ -1,0 +1,1 @@
+# vRealize Operations Integration\n\nSpecification for integrating CIS compliance data with vROps.\n\n## Integration Points\n- REST API endpoints\n- Custom metric definitions\n- Dashboard templates\n\n## Monitoring Features\n- Real-time compliance alerts\n- Historical trending\n- Multi-vCenter support
