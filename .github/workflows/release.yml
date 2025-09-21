@@ -21,6 +21,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      timeout-minutes: 10
       with:
         tag_name: ${{ github.ref_name }}
         name: VMware vSphere 8 CIS Benchmark ${{ github.ref_name }}

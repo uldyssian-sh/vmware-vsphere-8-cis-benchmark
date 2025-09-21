@@ -45,11 +45,13 @@ jobs:
         
         # Performance thresholds
         if ($loadTime.TotalSeconds -gt 10) {
-          Write-Warning "Script load time exceeds 10 seconds"
+          Write-Host "PERFORMANCE FAILURE: Script load time exceeds 10 seconds" -ForegroundColor Red
+          exit 1
         }
         
         if ($memoryUsed -gt 100) {
-          Write-Warning "Memory usage exceeds 100 MB"
+          Write-Host "PERFORMANCE FAILURE: Memory usage exceeds 100 MB" -ForegroundColor Red
+          exit 1
         }
         
         Write-Host "Performance analysis completed" -ForegroundColor Green

@@ -1,5 +1,10 @@
 name: CI/CD Pipeline
 
+env:
+  MAIN_SCRIPT_PATH: "scripts/Invoke-vSphere8CISAudit.ps1"
+  TEST_SCRIPT_PATH: "tests/basic-tests.ps1"
+  DOCS_PATH: "docs/"
+
 on:
   push:
     branches: [ main, develop ]
@@ -25,7 +30,7 @@ jobs:
     - name: Run PSScriptAnalyzer
       shell: powershell
       run: |
-        $results = Invoke-ScriptAnalyzer -Path "scripts/Invoke-vSphere8CISAudit.ps1" -Severity Error
+        $results = Invoke-ScriptAnalyzer -Path "$env:MAIN_SCRIPT_PATH" -Severity Error
         if ($results) {
           $results | Format-Table -AutoSize
           Write-Host "PSScriptAnalyzer found errors" -ForegroundColor Red
@@ -37,6 +42,7 @@ jobs:
   markdown-lint:
     name: Markdown Linting
     runs-on: ubuntu-latest
+    needs: powershell-analysis
     
     steps:
     - name: Checkout repository
@@ -52,12 +58,12 @@ jobs:
       
     - name: Run markdownlint
       run: |
-        markdownlint README.md docs/ --config .markdownlint.json
-      continue-on-error: true
+        markdownlint README.md ${{ env.DOCS_PATH }} --config .markdownlint.json
       
   security-scan:
     name: Security Scanning
     runs-on: ubuntu-latest
+    needs: [powershell-analysis, markdown-lint]
     
     steps:
     - name: Checkout repository
@@ -69,7 +75,7 @@ jobs:
         scan-type: 'fs'
         scan-ref: '.'
         format: 'table'
-        exit-code: '0'
+        exit-code: '1'
         
     - name: Security scan completed
       run: echo "✅ Security scan completed"
@@ -93,7 +99,6 @@ jobs:
     - name: Check links in README
       run: |
         markdown-link-check README.md --config .github/mlc_config.json
-      continue-on-error: true
       
   validate-structure:
     name: Repository Structure Validation
@@ -159,9 +164,9 @@ jobs:
       run: |
         Write-Host "Testing PowerShell script syntax..." -ForegroundColor Cyan
         
-        if (Test-Path "scripts/Invoke-vSphere8CISAudit.ps1") {
+        if (Test-Path "$env:MAIN_SCRIPT_PATH") {
           try {
-            $content = Get-Content "scripts/Invoke-vSphere8CISAudit.ps1" -Raw -ErrorAction Stop
+            $content = Get-Content "$env:MAIN_SCRIPT_PATH" -Raw -ErrorAction Stop
             $tokens = $null
             $errors = $null
             $null = [System.Management.Automation.PSParser]::Tokenize($content, [ref]$errors)
