@@ -156,7 +156,7 @@ function Add-CISResult {
     $script:CISSections[$Section] += $result
     $script:CompletedControls++
     
-    $percentComplete = [math]::Round(($script:CompletedControls / $script:TotalControls) * 100, 1)
+    $percentComplete = [math]::Min([math]::Round(($script:CompletedControls / $script:TotalControls) * 100, 1), 100)
     Write-ProgressUpdate -Activity "CIS Benchmark Audit" -Status "Completed: $ControlID - $Title" -PercentComplete $percentComplete
 }
 
