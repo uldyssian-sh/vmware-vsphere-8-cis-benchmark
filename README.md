@@ -420,3 +420,12 @@ Current version: 3.1.0 - Complete CIS Coverage (All 106 Controls Verified)
 ---
 
 **⭐ If this project helps you secure your VMware environment, please give it a star!**
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/issues)
+- **Security**: [Security Policy](SECURITY.md)
+- **Contributing**: [Contributing Guidelines](CONTRIBUTING.md)
+
+---
+
+**⭐ Star this repository if you find it helpful!**
