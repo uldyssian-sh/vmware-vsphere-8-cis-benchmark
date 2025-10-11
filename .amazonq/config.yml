@@ -1,0 +1,6 @@
+version: 1.0
+ai_features:
+  code_completion: true
+  code_review: true
+  security_scan: true
+  optimization: true
