@@ -4,50 +4,28 @@ This project exists thanks to all the people who contribute.
 
 ## Core Team
 
-### Project Maintainer
-- **[uldyssian-sh](https://github.com/uldyssian-sh)** - Project creator and maintainer
+### Maintainers
+- **uldyssian-sh LT** ([@uldyssian-sh](https://github.com/uldyssian-sh))
   - Email: 25517637+uldyssian-sh@users.noreply.github.com
-  - Role: Lead Developer, Security Architect
-  - Contributions: Initial implementation, CIS controls, documentation
+  - Role: Project Lead & Maintainer
 
 ## Automated Contributors
 
-### Bots and Automation
-- **[dependabot[bot]](https://github.com/dependabot)** - Automated dependency updates
+### Bots & Automation
+- **dependabot[bot]** ([@dependabot](https://github.com/dependabot))
   - Role: Dependency Management
-  - Contributions: Security updates, dependency maintenance
 
-- **[actions-user](https://github.com/actions-user)** - CI/CD automation
-  - Role: Continuous Integration
-  - Contributions: Automated testing, quality assurance
+- **github-actions[bot]** (GitHub Actions)
+  - Role: CI/CD Automation
 
-## Community Contributors
+- **actions-user** (GitHub Actions)
+  - Role: Repository Automation
 
-*We welcome community contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.*
+## Contact
 
-### How to Become a Contributor
-
-1. **Fork the repository**
-2. **Create a feature branch**
-3. **Make your changes**
-4. **Submit a pull request**
-5. **Get your PR reviewed and merged**
-
-### Recognition
-
-Contributors are recognized through:
-- Listing in this file
-- Mention in release notes
-- GitHub contributor statistics
-- Special recognition for significant contributions
-
-## Contribution Statistics
-
-- **Total Contributors:** 3
-- **Core Team:** 1
-- **Automated Contributors:** 2
-- **Community Contributors:** 0 (accepting contributions!)
+- **GitHub Issues**: [Create an issue](../../issues/new)
+- **Email**: 25517637+uldyssian-sh@users.noreply.github.com
 
 ---
 
-**Want to contribute?** Check out our [Contributing Guidelines](CONTRIBUTING.md) and [open issues](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/issues).
+**Thank you to all our contributors!** 🙏
