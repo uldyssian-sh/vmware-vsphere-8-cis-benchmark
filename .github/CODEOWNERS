@@ -3,6 +3,8 @@
 
 # PowerShell scripts
 *.ps1 @uldyssian-sh
+*.psm1 @uldyssian-sh
+*.psd1 @uldyssian-sh
 
 # Documentation
 *.md @uldyssian-sh
@@ -10,7 +12,12 @@ docs/ @uldyssian-sh
 
 # GitHub workflows and configuration
 .github/ @uldyssian-sh
+.github/workflows/branch-protection.yml @uldyssian-sh
+scripts/setup-branch-protection.sh @uldyssian-sh
 
 # Security and compliance files
 SECURITY.md @uldyssian-sh
 CONTRIBUTING.md @uldyssian-sh
+
+# Main audit script (requires extra review)
+scripts/Invoke-vSphere8CISAudit.ps1 @uldyssian-sh

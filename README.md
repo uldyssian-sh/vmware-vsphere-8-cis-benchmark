@@ -246,6 +246,7 @@ This tool operates in **strict read-only mode** with enterprise security feature
 - 📝 **Comprehensive Audit Logging** - Detailed execution tracking
 - 🚫 **No Sensitive Data Exposure** - Reports contain no credentials or secrets
 - 🛡️ **Regular Security Scanning** - Automated vulnerability assessments
+- 🔐 **Branch Protection** - Main branch protected with required reviews and status checks
 
 ## 🎨 Report Features
 
@@ -261,6 +262,39 @@ This tool operates in **strict read-only mode** with enterprise security feature
 - Integration with SIEM/GRC tools
 - Historical compliance tracking
 - Custom reporting capabilities
+
+## 🔐 Branch Protection
+
+The main branch is protected with the following security measures:
+
+- **Required Status Checks**: All CI/CD tests must pass before merge
+- **Required Reviews**: At least 1 approval required for pull requests
+- **Code Owner Reviews**: CODEOWNERS must approve changes
+- **Dismiss Stale Reviews**: Reviews are dismissed when new commits are pushed
+- **No Force Pushes**: Direct pushes to main branch are blocked
+- **No Deletions**: Main branch cannot be deleted
+- **Conversation Resolution**: All discussions must be resolved before merge
+
+### Setup Branch Protection
+
+To setup or update branch protection rules:
+
+**Option 1: Automated (GitHub Actions)**
+```bash
+# Trigger the branch protection workflow
+gh workflow run branch-protection.yml
+```
+
+**Option 2: Manual (GitHub CLI)**
+```bash
+# Run the setup script
+./scripts/setup-branch-protection.sh
+```
+
+**Option 3: GitHub Web Interface**
+1. Go to repository Settings → Branches
+2. Add rule for `main` branch
+3. Enable required status checks and reviews
 
 ## 🤝 Contributing
 
