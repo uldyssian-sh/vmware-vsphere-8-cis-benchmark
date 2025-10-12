@@ -6,6 +6,12 @@ env:
   DOCS_PATH: "docs/"
 
 on:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
   push:
     branches: [ main, develop ]
   pull_request:

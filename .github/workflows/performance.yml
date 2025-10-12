@@ -1,6 +1,12 @@
 name: Performance Testing
 
 on:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
   push:
     branches: [ main ]
     paths: [ 'scripts/**' ]
