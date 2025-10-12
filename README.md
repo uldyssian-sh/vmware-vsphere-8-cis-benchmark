@@ -385,4 +385,4 @@ Current version: 3.1.0 - Complete CIS Coverage (All 106 Controls Verified)
 
 ---
 
-**⭐ If this project helps you secure your VMware environment, please give it a star!**
+**⭐ If this project helps you secure your VMware environment, please give it a star!**# Security refresh Sun Oct 12 17:33:50 CEST 2025
