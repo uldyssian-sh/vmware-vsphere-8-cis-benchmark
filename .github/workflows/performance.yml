@@ -11,15 +11,6 @@ permissions:
   security-events: write
   actions: read
 
-
-
-  push:
-    branches: [ main ]
-    paths: [ 'scripts/**' ]
-  pull_request:
-    branches: [ main ]
-    paths: [ 'scripts/**' ]
-
 jobs:
   performance-test:
     name: PowerShell Performance Analysis

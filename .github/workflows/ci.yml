@@ -1,10 +1,5 @@
 name: CI/CD Pipeline
 
-env:
-  MAIN_SCRIPT_PATH: "scripts/Invoke-vSphere8CISAudit.ps1"
-  TEST_SCRIPT_PATH: "tests/basic-tests.ps1"
-  DOCS_PATH: "docs/"
-
 on:
   push:
     branches: [main, master]
@@ -15,15 +10,6 @@ permissions:
   contents: read
   security-events: write
   actions: read
-
-
-
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-  schedule:
-    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM UTC
 
 jobs:
   powershell-analysis:
