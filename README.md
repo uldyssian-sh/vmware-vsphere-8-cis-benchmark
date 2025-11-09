@@ -1,10 +1,7 @@
 # VMware vSphere 8 CIS Benchmark Implementation
 
 [![CI/CD Pipeline](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/actions/workflows/ci.yml/badge.svg)](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Security](https://img.shields.io/badge/Security-CIS%20Benchmark-blue.svg)](https://www.cisecurity.org/)
-[![VMware](https://img.shields.io/badge/VMware-vSphere%208-green.svg)](https://www.vmware.com/products/vsphere.html)
-[![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://docs.microsoft.com/en-us/powershell/)
 
 ## 📖 Introduction
 
