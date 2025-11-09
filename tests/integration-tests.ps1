@@ -70,4 +70,3 @@ Describe "vSphere 8 CIS Benchmark Integration Tests" {
             $script:scriptContent | Should -Match "\.csv"
         }
     }
-}# Updated 20251109_123841

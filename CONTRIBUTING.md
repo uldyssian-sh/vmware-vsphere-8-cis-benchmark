@@ -337,4 +337,3 @@ Contributors are recognized in:
 
 ---
 
-**Thank you for contributing to VMware vSphere security! Your efforts help organizations worldwide improve their security posture.**# Updated 20251109_123841

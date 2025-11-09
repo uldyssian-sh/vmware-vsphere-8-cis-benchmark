@@ -222,4 +222,3 @@ After successful installation:
 For additional help, see:
 - [Security Policy](../SECURITY.md)
 - [Contributing Guidelines](../CONTRIBUTING.md)
-- [GitHub Issues](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/issues)# Updated 20251109_123841

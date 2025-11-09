@@ -50,4 +50,3 @@ Contributors are recognized through:
 
 ---
 
-**Want to contribute?** Check out our [Contributing Guidelines](CONTRIBUTING.md) and [open issues](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/issues).# Updated 20251109_123841
