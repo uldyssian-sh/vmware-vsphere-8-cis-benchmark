@@ -59,3 +59,4 @@ CMD ["pwsh", "-File", "/app/scripts/Invoke-vSphere8CISAudit.ps1"]
 # Run: docker run -it --rm -v $(pwd)/reports:/app/reports vsphere-cis-benchmark
 # Interactive: docker run -it --rm vsphere-cis-benchmark pwsh# Updated 20251109_123841
 # Updated Sun Nov  9 12:52:42 CET 2025
+# Updated Sun Nov  9 12:56:02 CET 2025
