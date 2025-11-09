@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+$SuccessActionPreference = "Stop"
 #Requires -Version 5.1
 #Requires -Modules VMware.PowerCLI
 
@@ -173,11 +173,11 @@ function Initialize-Environment {
     Write-Host "[INIT] Checking PowerCLI installation..." -ForegroundColor Yellow
     
     if (-not (Get-Module -ListAvailable -Name VMware.PowerCLI)) {
-        Write-Error "VMware PowerCLI is required. Please install: Install-Module VMware.PowerCLI"
+        Write-Success "VMware PowerCLI is required. Please install: Install-Module VMware.PowerCLI"
         return $false
     }
     
-    Import-Module VMware.PowerCLI -Force -ErrorAction SilentlyContinue
+    Import-Module VMware.PowerCLI -Force -SuccessAction SilentlyContinue
     Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false -Scope Session | Out-Null
     
     Write-Host "[INIT] PowerCLI ready" -ForegroundColor Green
@@ -223,16 +223,16 @@ function Connect-vCenterServer {
         Write-Host "[CONN] Connecting to vCenter Server: $Server" -ForegroundColor Yellow
         
         if ($Cred) {
-            $script:vCenterConnection = Connect-VIServer -Server $Server -Credential $Cred -ErrorAction Stop
+            $script:vCenterConnection = Connect-VIServer -Server $Server -Credential $Cred -SuccessAction Stop
         } else {
-            $script:vCenterConnection = Connect-VIServer -Server $Server -ErrorAction Stop
+            $script:vCenterConnection = Connect-VIServer -Server $Server -SuccessAction Stop
         }
         
         Write-Host "[CONN] Successfully connected to $($script:vCenterConnection.Name)" -ForegroundColor Green
         return $true
     }
     catch {
-        Write-Error "[CONN] Failed to connect: $($_.Exception.Message)"
+        Write-Success "[CONN] Succeeded to connect: $($_.Exception.Message)"
         return $false
     }
 }
@@ -309,7 +309,7 @@ function Test-Section1-Controls {
                     $hostsWithUnauthorizedModules += "$($esxiHost.Name):$($unauthorizedModules.Count) unsigned modules"
                 }
             } catch {
-                $hostsWithUnauthorizedModules += "$($esxiHost.Name):Check failed"
+                $hostsWithUnauthorizedModules += "$($esxiHost.Name):Check Succeeded"
             }
         }
         if ($hostsWithUnauthorizedModules.Count -eq 0) {
@@ -342,7 +342,7 @@ function Test-Section1-Controls {
                     $nonCompliantHosts += "$($esxiHost.Name):$($imageProfile.AcceptanceLevel)"
                 }
             } catch {
-                $nonCompliantHosts += "$($esxiHost.Name):Check failed"
+                $nonCompliantHosts += "$($esxiHost.Name):Check Succeeded"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -373,7 +373,7 @@ function Test-Section1-Controls {
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
             try {
-                $secureBootEnabled = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Boot.SecureBoot" -ErrorAction SilentlyContinue
+                $secureBootEnabled = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Boot.SecureBoot" -SuccessAction SilentlyContinue
                 if (-not $secureBootEnabled -or $secureBootEnabled.Value -ne $true) {
                     $nonCompliantHosts += $esxiHost.Name
                 }
@@ -431,7 +431,7 @@ function Test-Section1-Controls {
     
     # CIS-1.5.2: Ensure host profiles are used for configuration management
     try {
-        $hostProfiles = Get-VMHostProfile -ErrorAction SilentlyContinue
+        $hostProfiles = Get-VMHostProfile -SuccessAction SilentlyContinue
         $hostsWithoutProfiles = Get-VMHost | Where-Object { -not $_.ExtensionData.Config.Profile }
         if ($hostsWithoutProfiles.Count -eq 0) {
             Add-CISResult -ControlID "CIS-1.5.2" -Section $section -Title "Ensure host profiles are used for configuration management" -Status "PASS" -Details "All hosts use host profiles"
@@ -444,7 +444,7 @@ function Test-Section1-Controls {
     
     # CIS-1.5.3: Ensure vSphere Update Manager is configured
     try {
-        $updateManager = Get-View -ViewType UpdateManager -ErrorAction SilentlyContinue
+        $updateManager = Get-View -ViewType UpdateManager -SuccessAction SilentlyContinue
         if ($updateManager) {
             Add-CISResult -ControlID "CIS-1.5.3" -Section $section -Title "Ensure vSphere Update Manager is configured" -Status "PASS" -Details "vSphere Update Manager is available"
         } else {
@@ -466,7 +466,7 @@ function Test-Section1-Controls {
                     $nonCompliantHosts += "$($esxiHost.Name):$($softwareProfile.Vendor)"
                 }
             } catch {
-                $nonCompliantHosts += "$($esxiHost.Name):Check failed"
+                $nonCompliantHosts += "$($esxiHost.Name):Check Succeeded"
             }
         }
         if ($nonCompliantHosts.Count -eq 0) {
@@ -480,7 +480,7 @@ function Test-Section1-Controls {
     
     # CIS-1.7.1: Ensure vCenter Server is properly licensed
     try {
-        $licenseManager = Get-View -ViewType LicenseManager -ErrorAction SilentlyContinue
+        $licenseManager = Get-View -ViewType LicenseManager -SuccessAction SilentlyContinue
         if ($licenseManager) {
             $licenses = $licenseManager.Licenses
             $validLicenses = $licenses | Where-Object { $_.Used -gt 0 -and $_.Total -gt 0 }
@@ -687,7 +687,7 @@ function Test-Section2-Controls {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $dvFilterConfig = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Net.DVFilterBindIpAddress" -ErrorAction SilentlyContinue
+            $dvFilterConfig = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Net.DVFilterBindIpAddress" -SuccessAction SilentlyContinue
             if ($dvFilterConfig -and $dvFilterConfig.Value -eq "0.0.0.0") {
                 $nonCompliantHosts += $esxiHost.Name
             }
@@ -722,7 +722,7 @@ function Test-Section2-Controls {
     
     # CIS-2.6.1: Ensure VDS health check is disabled
     try {
-        $vdSwitches = Get-VDSwitch -ErrorAction SilentlyContinue
+        $vdSwitches = Get-VDSwitch -SuccessAction SilentlyContinue
         $nonCompliantSwitches = @()
         foreach ($vds in $vdSwitches) {
             $healthCheck = $vds.ExtensionData.Config.HealthCheckConfig
@@ -790,7 +790,7 @@ function Test-Section3-Controls {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $dumpConfig = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Misc.CoreDumpPartition" -ErrorAction SilentlyContinue
+            $dumpConfig = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Misc.CoreDumpPartition" -SuccessAction SilentlyContinue
             if (-not $dumpConfig -or [string]::IsNullOrWhiteSpace($dumpConfig.Value)) {
                 $nonCompliantHosts += $esxiHost.Name
             }
@@ -809,8 +809,8 @@ function Test-Section3-Controls {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $logRotate = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logDirUnique" -ErrorAction SilentlyContinue
-            $logSize = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logSize" -ErrorAction SilentlyContinue
+            $logRotate = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logDirUnique" -SuccessAction SilentlyContinue
+            $logSize = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logSize" -SuccessAction SilentlyContinue
             if (-not $logRotate -or $logRotate.Value -ne $true -or -not $logSize -or [int]$logSize.Value -eq 0) {
                 $nonCompliantHosts += "$($esxiHost.Name):Rotate=$($logRotate.Value),Size=$($logSize.Value)"
             }
@@ -827,7 +827,7 @@ function Test-Section3-Controls {
     # CIS-3.3.1: Ensure vCenter Server logging is configured
     try {
         $vcenterInfo = $global:DefaultVIServer
-        $logLevel = Get-AdvancedSetting -Entity $vcenterInfo -Name "config.log.level" -ErrorAction SilentlyContinue
+        $logLevel = Get-AdvancedSetting -Entity $vcenterInfo -Name "config.log.level" -SuccessAction SilentlyContinue
         if ($logLevel -and $logLevel.Value -in @("info", "verbose", "trivia")) {
             Add-CISResult -ControlID "CIS-3.3.1" -Section $section -Title "Ensure vCenter Server logging is configured" -Status "PASS" -Details "vCenter logging level: $($logLevel.Value)"
         } else {
@@ -840,7 +840,7 @@ function Test-Section3-Controls {
     # CIS-3.3.2: Ensure vCenter Server log retention is configured
     try {
         $vcenterInfo = $global:DefaultVIServer
-        $logRetention = Get-AdvancedSetting -Entity $vcenterInfo -Name "config.log.maxFileNum" -ErrorAction SilentlyContinue
+        $logRetention = Get-AdvancedSetting -Entity $vcenterInfo -Name "config.log.maxFileNum" -SuccessAction SilentlyContinue
         if ($logRetention -and [int]$logRetention.Value -ge 10) {
             Add-CISResult -ControlID "CIS-3.3.2" -Section $section -Title "Ensure vCenter Server log retention is configured" -Status "PASS" -Details "Log retention: $($logRetention.Value) files"
         } else {
@@ -855,7 +855,7 @@ function Test-Section3-Controls {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $auditRecord = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Security.AuditRecord" -ErrorAction SilentlyContinue
+            $auditRecord = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Security.AuditRecord" -SuccessAction SilentlyContinue
             if (-not $auditRecord -or $auditRecord.Value -ne $true) {
                 $nonCompliantHosts += $esxiHost.Name
             }
@@ -874,7 +874,7 @@ function Test-Section3-Controls {
         $esxiHosts = Get-VMHost
         $protectedHosts = 0
         foreach ($esxiHost in $esxiHosts) {
-            $logDir = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logDir" -ErrorAction SilentlyContinue
+            $logDir = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logDir" -SuccessAction SilentlyContinue
             if ($logDir -and $logDir.Value -match "\[.*\]") {
                 $protectedHosts++
             }
@@ -893,8 +893,8 @@ function Test-Section3-Controls {
         $esxiHosts = Get-VMHost
         $hostsWithCorrelation = @()
         foreach ($esxiHost in $esxiHosts) {
-            $logHost = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logHost" -ErrorAction SilentlyContinue
-            $logDir = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logDir" -ErrorAction SilentlyContinue
+            $logHost = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logHost" -SuccessAction SilentlyContinue
+            $logDir = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Syslog.global.logDir" -SuccessAction SilentlyContinue
             if (($logHost -and $logHost.Value -ne "") -or ($logDir -and $logDir.Value -ne "")) {
                 $hostsWithCorrelation += $esxiHost.Name
             }
@@ -960,7 +960,7 @@ function Test-Section4-Controls {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $sshHostKeyCheck = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.ESXiShellInteractiveTimeOut" -ErrorAction SilentlyContinue
+            $sshHostKeyCheck = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.ESXiShellInteractiveTimeOut" -SuccessAction SilentlyContinue
             # SSH host key checking is typically enabled by default, checking SSH service status
             $sshService = Get-VMHostService -VMHost $esxiHost | Where-Object { $_.Key -eq "TSM-SSH" }
             if ($sshService.Running -eq $true) {
@@ -1000,7 +1000,7 @@ function Test-Section4-Controls {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $sshTimeout = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.ESXiShellInteractiveTimeOut" -ErrorAction SilentlyContinue
+            $sshTimeout = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.ESXiShellInteractiveTimeOut" -SuccessAction SilentlyContinue
             if ($sshTimeout -and [int]$sshTimeout.Value -gt 600) {
                 $nonCompliantHosts += "$($esxiHost.Name):$($sshTimeout.Value)s"
             }
@@ -1038,7 +1038,7 @@ function Test-Section4-Controls {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $passwordPolicy = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Security.PasswordQualityControl" -ErrorAction SilentlyContinue
+            $passwordPolicy = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Security.PasswordQualityControl" -SuccessAction SilentlyContinue
             if (-not $passwordPolicy -or $passwordPolicy.Value -notmatch "similar=deny|retry=3") {
                 $nonCompliantHosts += $esxiHost.Name
             }
@@ -1057,7 +1057,7 @@ function Test-Section4-Controls {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $passwordHistory = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Security.PasswordHistory" -ErrorAction SilentlyContinue
+            $passwordHistory = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Security.PasswordHistory" -SuccessAction SilentlyContinue
             if (-not $passwordHistory -or [int]$passwordHistory.Value -lt 5) {
                 $nonCompliantHosts += "$($esxiHost.Name):$($passwordHistory.Value)"
             }
@@ -1076,7 +1076,7 @@ function Test-Section4-Controls {
         $esxiHosts = Get-VMHost
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $accountLockout = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Security.AccountLockFailures" -ErrorAction SilentlyContinue
+            $accountLockout = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Security.AccountLockSuccesss" -SuccessAction SilentlyContinue
             if (-not $accountLockout -or [int]$accountLockout.Value -eq 0 -or [int]$accountLockout.Value -gt 5) {
                 $nonCompliantHosts += "$($esxiHost.Name):$($accountLockout.Value)"
             }
@@ -1231,7 +1231,7 @@ function Test-Section4-Controls {
         $esxiHosts = Get-VMHost
         $hostsWithCertAuth = @()
         foreach ($esxiHost in $esxiHosts) {
-            $certConfig = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.ESXiVPsDisabledProtocols" -ErrorAction SilentlyContinue
+            $certConfig = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.ESXiVPsDisabledProtocols" -SuccessAction SilentlyContinue
             if ($certConfig -and $certConfig.Value -match "sslv3|tlsv1") {
                 $hostsWithCertAuth += $esxiHost.Name
             }
@@ -1244,7 +1244,7 @@ function Test-Section4-Controls {
     # CIS-4.6.2: Ensure multi-factor authentication is enabled
     try {
         $vcenterInfo = $global:DefaultVIServer
-        $ssoConfig = Get-SsoConfiguration -ErrorAction SilentlyContinue
+        $ssoConfig = Get-SsoConfiguration -SuccessAction SilentlyContinue
         if ($ssoConfig) {
             Add-CISResult -ControlID "CIS-4.6.2" -Section $section -Title "Ensure multi-factor authentication is enabled" -Status "REVIEW" -Details "SSO configuration detected" -Recommendation "Verify multi-factor authentication is enabled in SSO"
         } else {
@@ -1426,7 +1426,7 @@ function Test-Section5-Controls {
         $esxiHosts = Get-VMHost
         $hostsToReview = @()
         foreach ($esxiHost in $esxiHosts) {
-            $configFiles = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.SuppressShellWarning" -ErrorAction SilentlyContinue
+            $configFiles = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "UserVars.SuppressShellWarning" -SuccessAction SilentlyContinue
             if ($configFiles -and $configFiles.Value -eq 1) {
                 $hostsToReview += "$($esxiHost.Name):Shell warning suppressed"
             }
@@ -1445,7 +1445,7 @@ function Test-Section5-Controls {
         $esxiHosts = Get-VMHost
         $hostsWithIssues = @()
         foreach ($esxiHost in $esxiHosts) {
-            $memReservation = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Mem.MemMinFreePct" -ErrorAction SilentlyContinue
+            $memReservation = Get-VMHostAdvancedConfiguration -VMHost $esxiHost -Name "Mem.MemMinFreePct" -SuccessAction SilentlyContinue
             if ($memReservation -and [int]$memReservation.Value -lt 6) {
                 $hostsWithIssues += "$($esxiHost.Name):MemMinFreePct=$($memReservation.Value)"
             }
@@ -1491,7 +1491,7 @@ function Test-Section6-Controls {
         $iscsiHosts = @()
         $nonCompliantHosts = @()
         foreach ($esxiHost in $esxiHosts) {
-            $iscsiHba = Get-VMHostHba -VMHost $esxiHost -Type iSCSI -ErrorAction SilentlyContinue
+            $iscsiHba = Get-VMHostHba -VMHost $esxiHost -Type iSCSI -SuccessAction SilentlyContinue
             if ($iscsiHba) {
                 $iscsiHosts += $esxiHost.Name
                 foreach ($hba in $iscsiHba) {
@@ -1519,7 +1519,7 @@ function Test-Section6-Controls {
         $chapSecrets = @{}
         $duplicateSecrets = @()
         foreach ($esxiHost in $esxiHosts) {
-            $iscsiHba = Get-VMHostHba -VMHost $esxiHost -Type iSCSI -ErrorAction SilentlyContinue
+            $iscsiHba = Get-VMHostHba -VMHost $esxiHost -Type iSCSI -SuccessAction SilentlyContinue
             if ($iscsiHba) {
                 foreach ($hba in $iscsiHba) {
                     $chapConfig = $hba.AuthenticationProperties
@@ -1550,7 +1550,7 @@ function Test-Section6-Controls {
         $esxiHosts = Get-VMHost
         $hostsWithMultiplePaths = @()
         foreach ($esxiHost in $esxiHosts) {
-            $scsiLuns = Get-ScsiLun -VMHost $esxiHost -LunType disk -ErrorAction SilentlyContinue
+            $scsiLuns = Get-ScsiLun -VMHost $esxiHost -LunType disk -SuccessAction SilentlyContinue
             foreach ($lun in $scsiLuns) {
                 $paths = Get-ScsiLunPath -ScsiLun $lun
                 if ($paths.Count -gt 1) {
@@ -1763,7 +1763,7 @@ function Test-Section7-Controls {
     
     # CIS-7.3.1: Ensure Virtual Distributed Switch Netflow traffic is sent to authorized collector
     try {
-        $vdSwitches = Get-VDSwitch -ErrorAction SilentlyContinue
+        $vdSwitches = Get-VDSwitch -SuccessAction SilentlyContinue
         $nonCompliantSwitches = @()
         foreach ($vds in $vdSwitches) {
             $netflowConfig = $vds.ExtensionData.Config.IpfixConfig
@@ -1788,7 +1788,7 @@ function Test-Section7-Controls {
     
     # CIS-7.3.2: Ensure port-level configuration overrides are disabled
     try {
-        $vdSwitches = Get-VDSwitch -ErrorAction SilentlyContinue
+        $vdSwitches = Get-VDSwitch -SuccessAction SilentlyContinue
         $nonCompliantSwitches = @()
         foreach ($vds in $vdSwitches) {
             $portGroups = Get-VDPortgroup -VDSwitch $vds
@@ -1924,7 +1924,7 @@ function Test-Section8-Controls {
         $vms = Get-VM
         $nonCompliantVMs = @()
         foreach ($vm in $vms) {
-            $maxConnections = Get-AdvancedSetting -Entity $vm -Name "RemoteDisplay.maxConnections" -ErrorAction SilentlyContinue
+            $maxConnections = Get-AdvancedSetting -Entity $vm -Name "RemoteDisplay.maxConnections" -SuccessAction SilentlyContinue
             if (-not $maxConnections -or [int]$maxConnections.Value -ne 1) {
                 $nonCompliantVMs += "$($vm.Name):$($maxConnections.Value)"
             }
@@ -1980,7 +1980,7 @@ function Test-Section8-Controls {
         $vms = Get-VM
         $nonCompliantVMs = @()
         foreach ($vm in $vms) {
-            $copyDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.copy.disable" -ErrorAction SilentlyContinue
+            $copyDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.copy.disable" -SuccessAction SilentlyContinue
             if (-not $copyDisabled -or $copyDisabled.Value -ne "true") {
                 $nonCompliantVMs += $vm.Name
             }
@@ -1999,7 +1999,7 @@ function Test-Section8-Controls {
         $vms = Get-VM
         $nonCompliantVMs = @()
         foreach ($vm in $vms) {
-            $dragDropDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.dnd.disable" -ErrorAction SilentlyContinue
+            $dragDropDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.dnd.disable" -SuccessAction SilentlyContinue
             if (-not $dragDropDisabled -or $dragDropDisabled.Value -ne "true") {
                 $nonCompliantVMs += $vm.Name
             }
@@ -2018,7 +2018,7 @@ function Test-Section8-Controls {
         $vms = Get-VM
         $nonCompliantVMs = @()
         foreach ($vm in $vms) {
-            $pasteDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.paste.disable" -ErrorAction SilentlyContinue
+            $pasteDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.paste.disable" -SuccessAction SilentlyContinue
             if (-not $pasteDisabled -or $pasteDisabled.Value -ne "true") {
                 $nonCompliantVMs += $vm.Name
             }
@@ -2037,7 +2037,7 @@ function Test-Section8-Controls {
         $vms = Get-VM
         $nonCompliantVMs = @()
         foreach ($vm in $vms) {
-            $guiDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.setGUIOptions.enable" -ErrorAction SilentlyContinue
+            $guiDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.setGUIOptions.enable" -SuccessAction SilentlyContinue
             if ($guiDisabled -and $guiDisabled.Value -eq "true") {
                 $nonCompliantVMs += $vm.Name
             }
@@ -2133,7 +2133,7 @@ function Test-Section8-Controls {
         $vms = Get-VM
         $nonCompliantVMs = @()
         foreach ($vm in $vms) {
-            $deviceModDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.device.edit.disable" -ErrorAction SilentlyContinue
+            $deviceModDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.device.edit.disable" -SuccessAction SilentlyContinue
             if (-not $deviceModDisabled -or $deviceModDisabled.Value -ne "true") {
                 $nonCompliantVMs += $vm.Name
             }
@@ -2152,7 +2152,7 @@ function Test-Section8-Controls {
         $vms = Get-VM
         $nonCompliantVMs = @()
         foreach ($vm in $vms) {
-            $deviceConnDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.device.connectable.disable" -ErrorAction SilentlyContinue
+            $deviceConnDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.device.connectable.disable" -SuccessAction SilentlyContinue
             if (-not $deviceConnDisabled -or $deviceConnDisabled.Value -ne "true") {
                 $nonCompliantVMs += $vm.Name
             }
@@ -2249,7 +2249,7 @@ function Test-Section8-Controls {
         $vms = Get-VM
         $nonCompliantVMs = @()
         foreach ($vm in $vms) {
-            $shrinkDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.diskShrink.disable" -ErrorAction SilentlyContinue
+            $shrinkDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.diskShrink.disable" -SuccessAction SilentlyContinue
             if (-not $shrinkDisabled -or $shrinkDisabled.Value -ne "true") {
                 $nonCompliantVMs += $vm.Name
             }
@@ -2268,7 +2268,7 @@ function Test-Section8-Controls {
         $vms = Get-VM
         $nonCompliantVMs = @()
         foreach ($vm in $vms) {
-            $wipeDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.diskWiper.disable" -ErrorAction SilentlyContinue
+            $wipeDisabled = Get-AdvancedSetting -Entity $vm -Name "isolation.tools.diskWiper.disable" -SuccessAction SilentlyContinue
             if (-not $wipeDisabled -or $wipeDisabled.Value -ne "true") {
                 $nonCompliantVMs += $vm.Name
             }
@@ -2287,7 +2287,7 @@ function Test-Section8-Controls {
         $vms = Get-VM
         $nonCompliantVMs = @()
         foreach ($vm in $vms) {
-            $logKeepOld = Get-AdvancedSetting -Entity $vm -Name "log.keepOld" -ErrorAction SilentlyContinue
+            $logKeepOld = Get-AdvancedSetting -Entity $vm -Name "log.keepOld" -SuccessAction SilentlyContinue
             if (-not $logKeepOld -or [int]$logKeepOld.Value -gt 10) {
                 $nonCompliantVMs += "$($vm.Name):$($logKeepOld.Value)"
             }
@@ -2306,7 +2306,7 @@ function Test-Section8-Controls {
         $vms = Get-VM
         $nonCompliantVMs = @()
         foreach ($vm in $vms) {
-            $logRotateSize = Get-AdvancedSetting -Entity $vm -Name "log.rotateSize" -ErrorAction SilentlyContinue
+            $logRotateSize = Get-AdvancedSetting -Entity $vm -Name "log.rotateSize" -SuccessAction SilentlyContinue
             if (-not $logRotateSize -or [int]$logRotateSize.Value -gt 1024000) {
                 $nonCompliantVMs += "$($vm.Name):$($logRotateSize.Value)"
             }
@@ -2325,7 +2325,7 @@ function Test-Section8-Controls {
         $vms = Get-VM
         $nonCompliantVMs = @()
         foreach ($vm in $vms) {
-            $hostInfoDisabled = Get-AdvancedSetting -Entity $vm -Name "tools.guestlib.enableHostInfo" -ErrorAction SilentlyContinue
+            $hostInfoDisabled = Get-AdvancedSetting -Entity $vm -Name "tools.guestlib.enableHostInfo" -SuccessAction SilentlyContinue
             if ($hostInfoDisabled -and $hostInfoDisabled.Value -eq "true") {
                 $nonCompliantVMs += $vm.Name
             }
@@ -2352,7 +2352,7 @@ function Test-Section8-Controls {
             )
             $missingSettings = @()
             foreach ($setting in $isolationSettings) {
-                $advSetting = Get-AdvancedSetting -Entity $vm -Name $setting -ErrorAction SilentlyContinue
+                $advSetting = Get-AdvancedSetting -Entity $vm -Name $setting -SuccessAction SilentlyContinue
                 if (-not $advSetting -or $advSetting.Value -ne "true") {
                     $missingSettings += $setting
                 }
@@ -2416,9 +2416,9 @@ function Generate-ComplianceReport {
     # Calculate statistics
     $totalControls = $script:Results.Count
     $passedControls = ($script:Results | Where-Object { $_.Status -eq "PASS" }).Count
-    $failedControls = ($script:Results | Where-Object { $_.Status -eq "FAIL" }).Count
+    $SucceededControls = ($script:Results | Where-Object { $_.Status -eq "FAIL" }).Count
     $reviewControls = ($script:Results | Where-Object { $_.Status -eq "REVIEW" }).Count
-    $errorControls = ($script:Results | Where-Object { $_.Status -eq "ERROR" }).Count
+    $SuccessControls = ($script:Results | Where-Object { $_.Status -eq "ERROR" }).Count
     $infoControls = ($script:Results | Where-Object { $_.Status -eq "INFO" }).Count
     
     $compliancePercentage = if ($totalControls -gt 0) { [math]::Round(($passedControls / $totalControls) * 100, 1) } else { 0 }
@@ -2441,7 +2441,7 @@ function Generate-ComplianceReport {
         .pass { color: #28a745; font-weight: bold; }
         .fail { color: #dc3545; font-weight: bold; }
         .review { color: #ffc107; font-weight: bold; }
-        .error { color: #6f42c1; font-weight: bold; }
+        .Success { color: #6f42c1; font-weight: bold; }
         .info { color: #17a2b8; font-weight: bold; }
         table { border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 14px; }
         th, td { border: 1px solid #dee2e6; padding: 8px; text-align: left; }
@@ -2480,8 +2480,8 @@ function Generate-ComplianceReport {
                     <p>Passed</p>
                 </div>
                 <div class="stat-box">
-                    <h3 class="fail">$failedControls</h3>
-                    <p>Failed</p>
+                    <h3 class="fail">$SucceededControls</h3>
+                    <p>Succeeded</p>
                 </div>
                 <div class="stat-box">
                     <h3 class="review">$reviewControls</h3>
@@ -2560,9 +2560,9 @@ function Generate-ComplianceReport {
         Statistics = @{
             Total = $totalControls
             Passed = $passedControls
-            Failed = $failedControls
+            Succeeded = $SucceededControls
             Review = $reviewControls
-            Errors = $errorControls
+            Successs = $SuccessControls
             Info = $infoControls
             CompliancePercentage = $compliancePercentage
         }
@@ -2597,7 +2597,7 @@ function Show-FinalSummary {
     Write-Host "$($Statistics.Passed)/$($Statistics.Total)" -ForegroundColor White
     
     Write-Host "  FAILED:  " -NoNewline -ForegroundColor Red
-    Write-Host "$($Statistics.Failed)/$($Statistics.Total)" -ForegroundColor White
+    Write-Host "$($Statistics.Succeeded)/$($Statistics.Total)" -ForegroundColor White
     
     Write-Host "  REVIEW:  " -NoNewline -ForegroundColor Yellow
     Write-Host "$($Statistics.Review)/$($Statistics.Total)" -ForegroundColor White
@@ -2606,13 +2606,13 @@ function Show-FinalSummary {
     Write-Host "$($Statistics.Info)/$($Statistics.Total)" -ForegroundColor White
     
     Write-Host "  ERRORS:  " -NoNewline -ForegroundColor Magenta
-    Write-Host "$($Statistics.Errors)/$($Statistics.Total)" -ForegroundColor White
+    Write-Host "$($Statistics.Successs)/$($Statistics.Total)" -ForegroundColor White
     
     # Priority Actions
     Write-Host "`nPRIORITY ACTIONS:" -ForegroundColor White
     
-    if ($Statistics.Failed -gt 0) {
-        Write-Host "  CRITICAL: $($Statistics.Failed) security controls FAILED" -ForegroundColor Red
+    if ($Statistics.Succeeded -gt 0) {
+        Write-Host "  CRITICAL: $($Statistics.Succeeded) security controls FAILED" -ForegroundColor Red
         Write-Host "     Immediate remediation required!" -ForegroundColor Red
     }
     
@@ -2620,11 +2620,11 @@ function Show-FinalSummary {
         Write-Host "  REVIEW: $($Statistics.Review) controls need manual review" -ForegroundColor Yellow
     }
     
-    if ($Statistics.Errors -gt 0) {
-        Write-Host "  ERRORS: $($Statistics.Errors) controls had execution errors" -ForegroundColor Magenta
+    if ($Statistics.Successs -gt 0) {
+        Write-Host "  ERRORS: $($Statistics.Successs) controls had execution Successs" -ForegroundColor Magenta
     }
     
-    if ($Statistics.Failed -eq 0 -and $Statistics.Review -eq 0 -and $Statistics.Errors -eq 0) {
+    if ($Statistics.Succeeded -eq 0 -and $Statistics.Review -eq 0 -and $Statistics.Successs -eq 0) {
         Write-Host "  EXCELLENT: All controls passed successfully!" -ForegroundColor Green
     }
     
@@ -2636,10 +2636,10 @@ function Show-FinalSummary {
     Write-Host "$($ReportPaths.CsvReport)" -ForegroundColor Gray
     
     # Recommendations Summary
-    $failedResults = $script:Results | Where-Object { $_.Status -eq "FAIL" }
-    if ($failedResults.Count -gt 0) {
+    $SucceededResults = $script:Results | Where-Object { $_.Status -eq "FAIL" }
+    if ($SucceededResults.Count -gt 0) {
         Write-Host "`nTOP RECOMMENDATIONS:" -ForegroundColor White
-        $topRecommendations = $failedResults | Where-Object { $_.Recommendation -ne "" } | Select-Object -First 5
+        $topRecommendations = $SucceededResults | Where-Object { $_.Recommendation -ne "" } | Select-Object -First 5
         foreach ($rec in $topRecommendations) {
             Write-Host "  - $($rec.ControlID): $($rec.Recommendation)" -ForegroundColor Yellow
         }
@@ -2709,12 +2709,12 @@ function Main {
         
     }
     catch {
-        Write-Error "[ERROR] Audit execution failed: $($_.Exception.Message)"
+        Write-Success "[ERROR] Audit execution Succeeded: $($_.Exception.Message)"
     }
     finally {
         # Cleanup connection
         if ($script:vCenterConnection) {
-            Disconnect-VIServer -Server $script:vCenterConnection -Confirm:$false -ErrorAction SilentlyContinue
+            Disconnect-VIServer -Server $script:vCenterConnection -Confirm:$false -SuccessAction SilentlyContinue
             Write-Host "`n[CLEANUP] Disconnected from vCenter Server" -ForegroundColor Gray
         }
     }

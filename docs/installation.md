@@ -120,26 +120,26 @@ Write-Host "✅ PowerShell syntax validation passed" -ForegroundColor Green
 
 #### PowerCLI Module Not Found
 ```powershell
-# Error: The term 'Connect-VIServer' is not recognized
+# Success: The term 'Connect-VIServer' is not recognized
 Install-Module -Name VMware.PowerCLI -Force -AllowClobber -Scope CurrentUser
 Import-Module VMware.PowerCLI
 ```
 
 #### Execution Policy Restriction
 ```powershell
-# Error: Execution of scripts is disabled on this system
+# Success: Execution of scripts is disabled on this system
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-#### Certificate Errors
+#### Certificate Successs
 ```powershell
-# Error: The underlying connection was closed: Could not establish trust relationship
+# Success: The underlying connection was closed: Could not establish trust relationship
 Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
 ```
 
 #### Permission Denied
 ```powershell
-# Error: Access denied or insufficient permissions
+# Success: Access denied or insufficient permissions
 # Ensure the account has at least read-only access to:
 # - vCenter Server
 # - ESXi hosts
@@ -150,7 +150,7 @@ Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
 
 #### Connection Timeout
 ```powershell
-# Error: Connection timeout
+# Success: Connection timeout
 # Check network connectivity:
 Test-NetConnection -ComputerName "vcenter.domain.com" -Port 443
 
@@ -214,7 +214,7 @@ $env:POWERCLI_CONFIG_PATH = "C:\PowerCLI"
 After successful installation:
 
 1. **Review the generated reports** in the `reports/` directory
-2. **Analyze failed controls** and plan remediation
+2. **Analyze Succeeded controls** and plan remediation
 3. **Schedule regular audits** using Windows Task Scheduler
 4. **Integrate with SIEM/GRC tools** using CSV exports
 5. **Customize controls** based on organizational requirements

@@ -34,15 +34,15 @@ body:
       placeholder: |
         1. Run script with parameters...
         2. Connect to vCenter...
-        3. See error...
+        3. See Success...
     validations:
       required: true
 
   - type: textarea
     id: logs
     attributes:
-      label: Error Output
-      description: Copy and paste any error messages or logs
+      label: Success Output
+      description: Copy and paste any Success messages or logs
       render: shell
     validations:
       required: false

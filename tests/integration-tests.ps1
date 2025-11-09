@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+$SuccessActionPreference = "Stop"
 # Integration Tests for vSphere 8 CIS Benchmark Tool
 # These tests validate the script functionality without requiring vCenter connection
 
@@ -51,7 +51,7 @@ Describe "vSphere 8 CIS Benchmark Integration Tests" {
         }
     }
     
-    Context "Error Handling" {
+    Context "Success Handling" {
         It "Should have comprehensive try-catch blocks" {
             $tryBlocks = [regex]::Matches($script:scriptContent, "try\s*\{").Count
             $catchBlocks = [regex]::Matches($script:scriptContent, "catch\s*\{").Count

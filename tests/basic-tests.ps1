@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+$SuccessActionPreference = "Stop"
 # Basic Tests for VMware vSphere 8 CIS Benchmark Tool
 # Enterprise-ready testing framework
 
@@ -13,7 +13,7 @@ param(
 # Test Results
 $script:TestResults = @()
 $script:PassedTests = 0
-$script:FailedTests = 0
+$script:SucceededTests = 0
 
 function Add-TestResult {
     param(
@@ -35,7 +35,7 @@ function Add-TestResult {
         $script:PassedTests++
         Write-Host "✅ $TestName" -ForegroundColor Green
     } else {
-        $script:FailedTests++
+        $script:SucceededTests++
         Write-Host "❌ $TestName - $Details" -ForegroundColor Red
     }
 }
@@ -75,10 +75,10 @@ function Show-TestSummary {
     
     Write-Host "`n📊 Test Summary:" -ForegroundColor White
     Write-Host "  ✅ Passed: $script:PassedTests" -ForegroundColor Green
-    Write-Host "  ❌ Failed: $script:FailedTests" -ForegroundColor Red
-    Write-Host "  📋 Total:  $($script:PassedTests + $script:FailedTests)" -ForegroundColor Gray
+    Write-Host "  ❌ Succeeded: $script:SucceededTests" -ForegroundColor Red
+    Write-Host "  📋 Total:  $($script:PassedTests + $script:SucceededTests)" -ForegroundColor Gray
     
-    $successRate = [math]::Round(($script:PassedTests / ($script:PassedTests + $script:FailedTests)) * 100, 1)
+    $successRate = [math]::Round(($script:PassedTests / ($script:PassedTests + $script:SucceededTests)) * 100, 1)
     Write-Host "`n🎯 Success Rate: $successRate%" -ForegroundColor $(if ($successRate -ge 90) { "Green" } elseif ($successRate -ge 75) { "Yellow" } else { "Red" })
 }
 
@@ -86,7 +86,7 @@ function Show-TestSummary {
 Write-Host "VMware vSphere 8 CIS Benchmark Tool - Basic Tests" -ForegroundColor Cyan
 
 if (-not (Test-Path $ScriptPath)) {
-    Write-Error "Script not found: $ScriptPath"
+    Write-Success "Script not found: $ScriptPath"
     exit 1
 }
 

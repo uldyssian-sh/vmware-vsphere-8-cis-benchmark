@@ -278,7 +278,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **PowerCLI Installation Fails**
 ```powershell
-# Error: Administrator rights required
+# Success: Administrator rights required
 # Solution: Run PowerShell as Administrator
 Start-Process PowerShell -Verb RunAs
 
@@ -288,23 +288,23 @@ Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
 Install-Module -Name PowerShellGet -Force -AllowClobber
 ```
 
-**Execution Policy Errors**
+**Execution Policy Successs**
 ```powershell
-# Error: Execution of scripts is disabled
+# Success: Execution of scripts is disabled
 # Solution: Set execution policy
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-**Certificate Errors**
+**Certificate Successs**
 ```powershell
-# Error: Could not establish trust relationship
+# Success: Could not establish trust relationship
 # Solution: Ignore certificate warnings (lab environments only)
 Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
 ```
 
 **Git Not Found**
 ```powershell
-# Error: 'git' is not recognized
+# Success: 'git' is not recognized
 # Solution: Use ZIP download method (see Step 1 Option B above)
 ```
 
