@@ -93,4 +93,4 @@ Test-ScriptSyntax
 Test-CISControlCount
 Show-TestSummary
 
-exit $script:FailedTests
+exit $script:FailedTests# Updated 20251109_123841
