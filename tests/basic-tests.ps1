@@ -1,3 +1,4 @@
+$ErrorActionPreference = "Stop"
 # Basic Tests for VMware vSphere 8 CIS Benchmark Tool
 # Enterprise-ready testing framework
 

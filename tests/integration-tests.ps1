@@ -1,3 +1,4 @@
+$ErrorActionPreference = "Stop"
 # Integration Tests for vSphere 8 CIS Benchmark Tool
 # These tests validate the script functionality without requiring vCenter connection
 
