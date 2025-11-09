@@ -25,7 +25,6 @@ Brief description of changes made.
 - [ ] Tested in lab environment
 - [ ] PSScriptAnalyzer passed
 - [ ] No breaking changes to existing functionality
-- [ ] Documentation updated (if applicable)
 
 ## Checklist
 - [ ] Code follows PowerShell best practices

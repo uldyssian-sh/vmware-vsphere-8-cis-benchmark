@@ -183,7 +183,6 @@ Brief description of changes made.
 ## Checklist
 - [ ] Code follows PowerShell best practices
 - [ ] Self-review completed
-- [ ] Documentation updated (if applicable)
 - [ ] No sensitive information in code or commits
 ```
 
