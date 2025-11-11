@@ -1,19 +1,5 @@
 # VMware vSphere 8 CIS Benchmark Implementation
 
-[![License](https://img.shields.io/github/license/uldyssian-sh/vmware-vsphere-8-cis-benchmark?style=flat-square)](LICENSE)
-[![Status](https://img.shields.io/badge/status-active-brightgreen?style=flat-square)](#)
-[![Languages](https://img.shields.io/github/languages/count/uldyssian-sh/vmware-vsphere-8-cis-benchmark?style=flat-square)](#)
-[![Size](https://img.shields.io/github/repo-size/uldyssian-sh/vmware-vsphere-8-cis-benchmark?style=flat-square)](#)
-[![Security Scan](https://img.shields.io/badge/security-scanned-green?style=flat-square)](#)
-[![License](https://img.shields.io/github/license/uldyssian-sh/vmware-vsphere-8-cis-benchmark?style=flat-square)](LICENSE)
-[![Status](https://img.shields.io/badge/status-active-brightgreen?style=flat-square)](#)
-[![Languages](https://img.shields.io/github/languages/count/uldyssian-sh/vmware-vsphere-8-cis-benchmark?style=flat-square)](#)
-[![Size](https://img.shields.io/github/repo-size/uldyssian-sh/vmware-vsphere-8-cis-benchmark?style=flat-square)](#)
-[![Security Scan](https://img.shields.io/badge/security-scanned-green?style=flat-square)](#)
-
-[![CI/CD Pipeline](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/actions/workflows/ci.yml/badge.svg)](https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/actions/workflows/ci.yml)
-[![Security](https://img.shields.io/badge/Security-CIS%20Benchmark-blue.svg)](https://www.cisecurity.org/)
-
 ## 📖 Introduction
 
 This enterprise-ready PowerShell tool provides **complete implementation of all 106 CIS (Center for Internet Security) Benchmark controls** for VMware vSphere 8 environments. Unlike other tools that rely on manual reviews, this implementation uses **PowerShell-based automated assessments** to evaluate your vSphere infrastructure against the official CIS Benchmark.
@@ -73,18 +59,6 @@ cd vmware-vsphere-8-cis-benchmark
 **Option B: Download ZIP (if Git not available)**
 ```powershell
 # Download repository as ZIP file
-
-[![License](https://img.shields.io/github/license/uldyssian-sh/vmware-vsphere-8-cis-benchmark?style=flat-square)](LICENSE)
-[![Status](https://img.shields.io/badge/status-active-brightgreen?style=flat-square)](#)
-[![Languages](https://img.shields.io/github/languages/count/uldyssian-sh/vmware-vsphere-8-cis-benchmark?style=flat-square)](#)
-[![Size](https://img.shields.io/github/repo-size/uldyssian-sh/vmware-vsphere-8-cis-benchmark?style=flat-square)](#)
-[![Security Scan](https://img.shields.io/badge/security-scanned-green?style=flat-square)](#)
-
-[![License](https://img.shields.io/github/license/uldyssian-sh/vmware-vsphere-8-cis-benchmark?style=flat-square)](LICENSE)
-[![Status](https://img.shields.io/badge/status-active-brightgreen?style=flat-square)](#)
-[![Languages](https://img.shields.io/github/languages/count/uldyssian-sh/vmware-vsphere-8-cis-benchmark?style=flat-square)](#)
-[![Size](https://img.shields.io/github/repo-size/uldyssian-sh/vmware-vsphere-8-cis-benchmark?style=flat-square)](#)
-[![Security Scan](https://img.shields.io/badge/security-scanned-green?style=flat-square)](#)
 $url = "https://github.com/uldyssian-sh/vmware-vsphere-8-cis-benchmark/archive/refs/heads/main.zip"
 $output = "$env:TEMP\cis-benchmark.zip"
 Invoke-WebRequest -Uri $url -OutFile $output
@@ -404,4 +378,3 @@ Current version: 3.1.0 - Complete CIS Coverage (All 106 Controls Verified)
 - [VMware PowerCLI Documentation](https://developer.vmware.com/powercli)
 
 ---
-
