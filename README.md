@@ -378,3 +378,4 @@ Current version: 3.1.0 - Complete CIS Coverage (All 106 Controls Verified)
 - [VMware PowerCLI Documentation](https://developer.vmware.com/powercli)
 
 ---
+⭐ Star this repository if you find it helpful!
