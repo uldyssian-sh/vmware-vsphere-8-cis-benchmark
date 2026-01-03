@@ -86,3 +86,9 @@ site/
 
 # Keep directory structure but ignore contents
 reports/.gitkeep
+
+# Security - Sensitive Files
+*.key
+*.pem
+config.json
+secrets.json
