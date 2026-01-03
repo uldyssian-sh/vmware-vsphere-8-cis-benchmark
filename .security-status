@@ -1,0 +1,8 @@
+# Security Status: VERIFIED
+Repository: vmware-vsphere-8-cis-benchmark
+Workflow: Ultra Secure Contributors Setup
+GitHub Actions: Native verified commits enabled
+Dependabot: Native verified commits enabled
+Manual commits: GPG verified with registered key
+Status: All contributors will have verified commits
+Updated: Sat Jan  3 22:01:05 CET 2026
